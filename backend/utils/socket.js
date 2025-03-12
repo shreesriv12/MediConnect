@@ -1,6 +1,6 @@
 import { Server } from "socket.io";
 
-const onlineUsers = new Map(); // Stores online users (socketId -> userId)
+const onlineUsers = new Map(); // Stores online users (userId -> socketId)
 
 const initializeSocket = (server) => {
   const io = new Server(server, {
@@ -17,6 +17,9 @@ const initializeSocket = (server) => {
     socket.on("user_online", (userId) => {
       onlineUsers.set(userId, socket.id);
       console.log(`User ${userId} is online with socket ID: ${socket.id}`);
+
+      // Notify all users about the updated online users list
+      io.emit("update_online_users", Array.from(onlineUsers.keys()));
     });
 
     // Handle joining a chat room
@@ -26,12 +29,17 @@ const initializeSocket = (server) => {
     });
 
     // Handle sending messages
-    socket.on("send_message", (data) => {
+    socket.on("send_message", (data, callback) => {
       const { senderId, receiverId, message } = data;
 
       // Check if the receiver is online
       if (onlineUsers.has(receiverId)) {
         io.to(onlineUsers.get(receiverId)).emit("receive_message", data);
+
+        // Acknowledge message delivery
+        if (callback) callback({ status: "delivered" });
+      } else {
+        if (callback) callback({ status: "offline" });
       }
     });
 
@@ -52,7 +60,15 @@ const initializeSocket = (server) => {
       if (userId) {
         onlineUsers.delete(userId);
         console.log(`User ${userId} disconnected`);
+
+        // Notify all users about the updated online users list
+        io.emit("update_online_users", Array.from(onlineUsers.keys()));
       }
+    });
+
+    // Error handling
+    socket.on("error", (err) => {
+      console.error(`Socket error: ${err.message}`);
     });
   });
 
