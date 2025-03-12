@@ -53,6 +53,37 @@ const initializeSocket = (server) => {
       }
     });
 
+    socket.on("webrtc_offer", (data) => {
+      const { targetUserId, offer } = data;
+      if (onlineUsers.has(targetUserId)) {
+        io.to(onlineUsers.get(targetUserId)).emit("webrtc_offer", {
+          senderId: socket.id,
+          offer,
+        });
+      }
+    });
+
+    socket.on("webrtc_answer", (data) => {
+      const { targetUserId, answer } = data;
+      if (onlineUsers.has(targetUserId)) {
+        io.to(onlineUsers.get(targetUserId)).emit("webrtc_answer", {
+          senderId: socket.id,
+          answer,
+        });
+      }
+    });
+
+    socket.on("webrtc_ice_candidate", (data) => {
+      const { targetUserId, candidate } = data;
+      if (onlineUsers.has(targetUserId)) {
+        io.to(onlineUsers.get(targetUserId)).emit("webrtc_ice_candidate", {
+          senderId: socket.id,
+          candidate,
+        });
+      }
+    });
+
+
     // Handle user disconnection
     socket.on("disconnect", () => {
       const userId = [...onlineUsers.entries()].find(([_, id]) => id === socket.id)?.[0];
