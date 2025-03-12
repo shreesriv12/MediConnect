@@ -2,7 +2,7 @@ import express from "express";
 import "dotenv/config";
 import cookieParser from "cookie-parser";
 import cors from "cors";
-import initializeSocket from "./utils/socket.js"; // Import the socket function
+import initializeSocket from "./src/utils/socket.js"; // Import the socket function
 import http from "http";    
 const app = express();
 const server = http.createServer(app); // Define server here
@@ -10,7 +10,7 @@ const server = http.createServer(app); // Define server here
 const io = initializeSocket(server);
 
 
-import connectDB from "./config/db.js";
+import connectDB from "./src/config/db.js";
 import { config } from "process";
 
 const PORT = process.env.PORT || 5000;
