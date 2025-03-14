@@ -2,7 +2,7 @@ import { v2 as cloud } from "cloudinary";
 import fs from "fs";
 
 cloud.config({
-  cloud_name: "the-secretary",
+  cloud_name: process.env.CLOUDINARY_NAME,
   api_key: process.env.CLOUDINARY_KEY,
   api_secret: process.env.CLOUDINARY_SECRET,
 });
@@ -18,21 +18,23 @@ const deleteLocalFile = (path) => {
 
 const uploadToCloud = async (localPath) => {
   try {
-    if (!localPath) return null;
+    console.log("Uploading file to Cloudinary:", localPath);
     const res = await cloud.uploader.upload(localPath, {
       use_filename: true,
       unique_filename: false,
       overwrite: true,
       resource_type: "auto",
     });
-    console.log("File Uploaded Successfully", res.url);
+
+    console.log("Cloudinary Response:", res);
     deleteLocalFile(localPath);
     return res;
   } catch (err) {
-    console.log(err);
+    console.error("Cloudinary Upload Error:", err);
     deleteLocalFile(localPath);
     return null;
   }
 };
+
 
 export { uploadToCloud, cloud };

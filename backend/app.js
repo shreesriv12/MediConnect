@@ -2,12 +2,24 @@ import express from "express";
 import "dotenv/config";
 import cookieParser from "cookie-parser";
 import cors from "cors";
-import initializeSocket from "./src/utils/socket.js"; // Import the socket function
-import http from "http";    
+import initializeSocket from "./src/utils/socket.js"; 
+import http from "http";   
+import dotenv from 'dotenv' 
 const app = express();
-const server = http.createServer(app); // Define server here
+const server = http.createServer(app); 
+import nodemailer from "nodemailer";
 
 const io = initializeSocket(server);
+
+dotenv.config();
+
+const transporter = nodemailer.createTransport({
+  service: "Gmail",
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+});
 
 
 import connectDB from "./src/config/db.js";
@@ -41,3 +53,8 @@ connectDB()
   .catch((err) => {
     console.log("Mongo Connection Error", err);
   });
+
+
+
+  import doctorRouter from './src/routes/doctor.routes.js'
+  app.use("/doctor",doctorRouter)
