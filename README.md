@@ -1,4 +1,4 @@
-# MediConnect
+# MediConnect-Working in Progress
 
 MediConnect is an all-in-one healthcare platform designed to seamlessly connect **doctors** and **clients** for hassle-free appointment scheduling, real-time consultations, and easy access to medical resources. Whether you need to **book a doctor**, **chat for advice**, or **search for medicines**, MediConnect provides a smooth and secure experience.
 
