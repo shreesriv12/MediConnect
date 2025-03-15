@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
-import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
 
 const doctorSchema = new mongoose.Schema(
   {
@@ -37,6 +37,13 @@ const doctorSchema = new mongoose.Schema(
       type: Number,
       required: true,
     },
+    phone: {
+      type: String,
+      required: true,
+      unique: true,
+      trim: true,
+      match: [/^\+?[1-9]\d{1,14}$/, "Please enter a valid phone number"], // Supports E.164 format
+    },
     gender: {
       type: String,
       enum: ["Male", "Female", "Other"],
@@ -54,38 +61,42 @@ const doctorSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    verificationToken: String, // For email verification
+    tokenVersion: { type: Number, default: 0 }, 
+    otp: String,
+    otpExpires: Date,
   },
   { timestamps: true }
 );
 
-// **Hash Password Before Saving**
+// ** Hash password before saving **
 doctorSchema.pre("save", async function (next) {
-  if (this.isModified("password")) {
-    this.password = await bcrypt.hash(this.password, 10);
-  }
-  return next();
+  if (!this.isModified("password")) return next();
+  this.password = await bcrypt.hash(this.password, 10);
+  next();
 });
 
-// **Generate Access Token**
+// ** Method to compare passwords **
+doctorSchema.methods.isPasswordCorrect = async function (password) {
+  return await bcrypt.compare(password, this.password);
+};
+
+// ** Generate Access Token **
 doctorSchema.methods.generateAccessToken = function () {
   return jwt.sign(
-    {
-      _id: this._id,
-      name: this.name,
-      email: this.email,
-    },
+    { _id: this._id, email: this.email, userType: "Doctor", tokenVersion: this.tokenVersion },
     process.env.ACCESS_TOKEN_SECRET,
-    {
-      expiresIn: process.env.ACCESS_TOKEN_EXPIRY,
-    }
+    { expiresIn: process.env.ACCESS_TOKEN_EXPIRY }
   );
 };
 
-// **Generate Refresh Token**
+// ** Generate Refresh Token **
 doctorSchema.methods.generateRefreshToken = function () {
-  return jwt.sign({ _id: this._id }, process.env.REFRESH_TOKEN_SECRET, {
-    expiresIn: process.env.REFRESH_TOKEN_EXPIRY,
-  });
+  return jwt.sign(
+    { _id: this._id },
+    process.env.REFRESH_TOKEN_SECRET,
+    { expiresIn: process.env.REFRESH_TOKEN_EXPIRY }
+  );
 };
 
 const Doctor = mongoose.model("Doctor", doctorSchema);
