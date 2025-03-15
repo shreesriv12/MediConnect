@@ -66,7 +66,7 @@ const registerDoctor = asyncHandler(async (req, res) => {
    const otpSent = await sendOtp(phone, otp);
    if (!otpSent) throw new ApiError(500, "Failed to send OTP");
 
-   
+
   const verificationToken = jwt.sign({ email }, process.env.EMAIL_SECRET, { expiresIn: "1d" });
 
   const doctor = await Doctor.create({
@@ -290,8 +290,8 @@ const verifyOtp = asyncHandler(async (req, res) => {
   await doctor.save();
 
   // Generate authentication tokens
-  const accessToken = jwt.sign({ _id: doctor._id }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: "15m" });
-  const refreshToken = jwt.sign({ _id: doctor._id }, process.env.REFRESH_TOKEN_SECRET, { expiresIn: "7d" });
+  const accessToken = jwt.sign({ _id: doctor._id }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: process.env.ACCESS_TOKEN_EXPIRY });
+  const refreshToken = jwt.sign({ _id: doctor._id }, process.env.REFRESH_TOKEN_SECRET, { expiresIn: process.env.REFRESH_TOKEN_EXPIRY});
 
   // Set secure cookies
   const cookieOptions = { httpOnly: true, secure: true };

@@ -57,4 +57,6 @@ connectDB()
 
 
   import doctorRouter from './src/routes/doctor.routes.js'
-  app.use("/doctor",doctorRouter)
+  import clientRouter from './src/routes/client.routes.js'
+  app.use("/doctor",doctorRouter);
+  app.use('/client',clientRouter);
