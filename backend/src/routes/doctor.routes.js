@@ -1,30 +1,42 @@
-import express from "express";
-import {
-  registerDoctor,
-  loginDoctor,
-  verifyEmail,
-  verifyOtp,
-  logoutDoctor,
+// doctorRoutes.js
+import { Router } from 'express';
+import { 
+  registerDoctor, 
+  loginDoctor, 
+  verifyOtp, 
+  verifyEmail, 
+  logoutDoctor, 
   refreshAccessToken,
   getCurrentDoctor,
-  updateDoctor
-} from "../controllers/doctor.controllers.js";
-import { isAuthenticated } from "../middlewares/auth.middleware.js"
-import multer from "multer";
+  updateDoctor,
+  createAppointmentSlot,
+  getDoctorSlots,
+  updateAppointmentSlot,
+  deleteAppointmentSlot,
+  getDoctorAppointments,
+  updateAppointmentStatus
+} from '../controllers/doctor.controllers.js'
+import { upload } from '../middlewares/multer.middleware.js';
+import {isAuthenticated} from '../middlewares/auth.middleware.js'
+const router = Router();
 
-const router = express.Router();
+// Authentication routes
+router.post('/register', upload.single('avatar'), registerDoctor);
+router.post('/login', loginDoctor);
+router.post('/verify-otp', verifyOtp);
+router.get('/verify-email', verifyEmail);
+router.post('/logout', isAuthenticated, logoutDoctor);
+router.post('/refresh-token', refreshAccessToken);
+router.get('/me', isAuthenticated, getCurrentDoctor);
+router.patch('/update', isAuthenticated, upload.single('avatar'), updateDoctor);
 
-// ** Multer setup for handling file uploads **
-const upload = multer({ dest: "uploads/" });
-
-// ** Doctor authentication routes **
-router.post("/register", upload.single("avatar"), registerDoctor);
-router.post("/login", loginDoctor);
-router.get("/verify-email", verifyEmail);
-router.post("/logout", isAuthenticated, logoutDoctor);
-router.post("/refresh-token", refreshAccessToken);
-router.get("/profile", getCurrentDoctor);
-router.put("/update", isAuthenticated, upload.single("file"), updateDoctor); // Update doctor route
-router.post("/verify-otp", verifyOtp);
+// Appointment management routes
+router.post('/slots', isAuthenticated, createAppointmentSlot);
+router.get('/slots', isAuthenticated, getDoctorSlots);
+router.patch('/slots/:id', isAuthenticated, updateAppointmentSlot);
+router.delete('/slots/:id', isAuthenticated, deleteAppointmentSlot);
+router.get('/appointments', isAuthenticated, getDoctorAppointments);
+router.patch('/appointments/:id/status', isAuthenticated, updateAppointmentStatus);
 
 export default router;
+

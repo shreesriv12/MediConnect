@@ -9,6 +9,7 @@ const app = express();
 const server = http.createServer(app); 
 import nodemailer from "nodemailer";
 
+
 const io = initializeSocket(server);
 
 dotenv.config();
@@ -58,5 +59,9 @@ connectDB()
 
   import doctorRouter from './src/routes/doctor.routes.js'
   import clientRouter from './src/routes/client.routes.js'
+   import paymentRouter from './src/routes/payment.routes.js';
   app.use("/doctor",doctorRouter);
   app.use('/client',clientRouter);
+  app.use('/payments', paymentRouter);
+
+

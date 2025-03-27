@@ -1,3 +1,4 @@
+
 import Doctor from "../models/doctor.models.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
@@ -7,8 +8,7 @@ import bcrypt from "bcryptjs";
 import nodemailer from "nodemailer";
 import { uploadToCloud } from "../utils/cloudinary.js";
 import { sendOtp } from "../utils/sendotp.js";
-
-
+import AppointmentSlot from "../models/appointmentSlot.model.js";
 const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
 
 
@@ -304,5 +304,125 @@ const verifyOtp = asyncHandler(async (req, res) => {
 });
 
 
+// Create Appointment Slot
+const createAppointmentSlot = asyncHandler(async (req, res) => {
+  const { date, startTime, endTime, duration, fee } = req.body;
+  
+  // Create appointment slot
+  const slot = await AppointmentSlot.create({
+    doctorId: req.doctor._id,
+    date: new Date(date),
+    startTime: new Date(startTime),
+    endTime: new Date(endTime),
+    duration: duration || 30, // default 30 minutes
+    fee: fee || req.doctor.fee // use doctor's default fee if not provided
+  });
+  
+  return res
+    .status(201)
+    .json(new ApiResponse(201, slot, "Appointment slot created successfully"));
+});
 
-export { registerDoctor, loginDoctor,verifyOtp, verifyEmail, logoutDoctor, refreshAccessToken ,getCurrentDoctor,updateDoctor};
+// Get Doctor's Appointment Slots
+const getDoctorSlots = asyncHandler(async (req, res) => {
+  const slots = await AppointmentSlot.find({ doctorId: req.doctor._id });
+  
+  return res
+    .status(200)
+    .json(new ApiResponse(200, { count: slots.length, slots }, "Doctor slots retrieved successfully"));
+});
+
+// Update Appointment Slot
+const updateAppointmentSlot = asyncHandler(async (req, res) => {
+  const { date, startTime, endTime, duration, fee } = req.body;
+  
+  const slot = await AppointmentSlot.findOneAndUpdate(
+    { _id: req.params.id, doctorId: req.doctor._id, isBooked: false },
+    { date: new Date(date), startTime: new Date(startTime), endTime: new Date(endTime), duration, fee },
+    { new: true, runValidators: true }
+  );
+  
+  if (!slot) {
+    throw new ApiError(404, "Slot not found or cannot be updated because it is already booked");
+  }
+  
+  return res
+    .status(200)
+    .json(new ApiResponse(200, slot, "Appointment slot updated successfully"));
+});
+
+// Delete Appointment Slot
+const deleteAppointmentSlot = asyncHandler(async (req, res) => {
+  const slot = await AppointmentSlot.findOneAndDelete({
+    _id: req.params.id,
+    doctorId: req.doctor._id,
+    isBooked: false
+  });
+  
+  if (!slot) {
+    throw new ApiError(404, "Slot not found or cannot be deleted because it is already booked");
+  }
+  
+  return res
+    .status(200)
+    .json(new ApiResponse(200, {}, "Appointment slot deleted successfully"));
+});
+
+// Get Doctor's Appointments
+const getDoctorAppointments = asyncHandler(async (req, res) => {
+  const { status } = req.query;
+  
+  const query = { doctorId: req.doctor._id };
+  if (status) {
+    query.status = status;
+  }
+  
+  const appointments = await Appointment.find(query)
+    .populate('clientId', 'name email phone')
+    .populate('slotId');
+  
+  return res
+    .status(200)
+    .json(new ApiResponse(200, { count: appointments.length, appointments }, "Doctor appointments retrieved successfully"));
+});
+
+// Update Appointment Status
+const updateAppointmentStatus = asyncHandler(async (req, res) => {
+  const { status } = req.body;
+  
+  if (!['confirmed', 'cancelled', 'completed'].includes(status)) {
+    throw new ApiError(400, "Invalid status");
+  }
+  
+  const appointment = await Appointment.findOneAndUpdate(
+    { _id: req.params.id, doctorId: req.doctor._id },
+    { status },
+    { new: true, runValidators: true }
+  );
+  
+  if (!appointment) {
+    throw new ApiError(404, "Appointment not found");
+  }
+  
+  return res
+    .status(200)
+    .json(new ApiResponse(200, appointment, "Appointment status updated successfully"));
+});
+
+export { 
+  registerDoctor, 
+  loginDoctor, 
+  verifyOtp, 
+  verifyEmail, 
+  logoutDoctor, 
+  refreshAccessToken,
+  getCurrentDoctor,
+  updateDoctor,
+  // New exported functions for appointment management
+  createAppointmentSlot,
+  getDoctorSlots,
+  updateAppointmentSlot,
+  deleteAppointmentSlot,
+  getDoctorAppointments,
+  updateAppointmentStatus
+};

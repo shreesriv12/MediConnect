@@ -99,5 +99,5 @@ doctorSchema.methods.generateRefreshToken = function () {
   );
 };
 
-const Doctor = mongoose.model("Doctor", doctorSchema);
+const Doctor = mongoose.models.Doctor || mongoose.model("Doctor", doctorSchema);
 export default Doctor;

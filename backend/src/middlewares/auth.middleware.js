@@ -4,22 +4,27 @@ import { ApiError } from "../utils/ApiError.js";
 import Client from "../models/client.model.js";
 export const isAuthenticated = async (req, res, next) => {
   const token = req.cookies.accessToken || req.header("Authorization")?.replace("Bearer ", "");
-  if (!token) throw new ApiError(401, "Unauthorized access");
+
+  if (!token) {
+    return next(new ApiError(401, "Unauthorized: No token provided"));
+  }
 
   try {
-    
-    // Decode the token
     const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
     let user = await Doctor.findById(decoded._id).select("-password -refreshToken");
+
     if (!user) {
       user = await Client.findById(decoded._id).select("-password -refreshToken");
-      if (!user) throw new ApiError(401, "User not found");
-      req.client = user; // Attach client info if found
+      if (!user) return next(new ApiError(401, "Unauthorized: User not found"));
+      req.client = user;
     } else {
-      req.doctor = user; // Attach doctor info if found
+      req.doctor = user;
     }
+
     next();
   } catch (err) {
-    throw new ApiError(401, "Invalid or expired token");
+    console.error("Token verification error:", err.message);
+    next(new ApiError(401, "Unauthorized: Invalid or expired token"));
   }
 };
+

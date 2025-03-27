@@ -1,4 +1,8 @@
 import Client from "../models/client.model.js";
+import Appointment from "../models/appointment.model.js";
+import AppointmentSlot from "../models/appointmentSlot.model.js";
+import Doctor from "../models/doctor.models.js";
+import Payment from "../models/payment.model.js"; 
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
@@ -7,7 +11,7 @@ import bcrypt from "bcryptjs";
 import nodemailer from "nodemailer";
 import { uploadToCloud } from "../utils/cloudinary.js";
 import { sendOtp } from "../utils/sendotp.js";
-
+import {createPayPalOrder} from '../utils/paypal.js'
 const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
 
 const transporter = nodemailer.createTransport({
@@ -109,10 +113,10 @@ const loginClient = asyncHandler(async (req, res) => {
           "Client logged in successfully"
         )
       );
-  });
+});
   
 const verifyEmail = asyncHandler(async (req, res) => {
-  const { token } = req.query;
+  const {token} = req.query || req.body.token || req.headers.authorization?.split(" ")[1];
   if (!token) throw new ApiError(400, "Token missing");
   const decoded = jwt.verify(token, process.env.EMAIL_SECRET);
   const client = await Client.findOneAndUpdate({ email: decoded.email }, { verified: true }, { new: true });
@@ -157,7 +161,6 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, { accessToken, refreshToken }, "Token refreshed"));
 });
 
-
 const verifyOtp = asyncHandler(async (req, res) => {
   const { clientId, otp } = req.body;
 
@@ -190,12 +193,235 @@ const verifyOtp = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, { clientId: client._id, message: "OTP verified successfully!" }));
 });
 
-// Get Current user data lol
 const getCurrentClient = asyncHandler(async (req, res) => {
-    return res
-      .status(200)
-      .json(new ApiResponse(200, req.client, "Current Client Data"));
+  return res
+    .status(200)
+    .json(new ApiResponse(200, req.client, "Current Client Data"));
+});
+
+// ===== APPOINTMENT RELATED CONTROLLERS ===== //
+
+// Get all doctors
+const getDoctors = asyncHandler(async (req, res) => {
+  const { specialization, name } = req.query;
+  
+  const query = {};
+  
+  if (specialization) {
+    query.specialization = specialization;
+  }
+  
+  if (name) {
+    query.name = { $regex: name, $options: 'i' };
+  }
+  
+  const doctors = await Doctor.find(query).select('-password');
+  
+  return res
+    .status(200)
+    .json(new ApiResponse(200, { count: doctors.length, doctors }, "Doctors fetched successfully"));
+});
+
+// Get a specific doctor's details
+const getDoctorDetail = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  
+  const doctor = await Doctor.findById(id).select('-password');
+  
+  if (!doctor) {
+    throw new ApiError(404, "Doctor not found");
+  }
+  
+  return res
+    .status(200)
+    .json(new ApiResponse(200, doctor, "Doctor details fetched successfully"));
+});
+
+// Get a doctor's available appointment slots
+const getDoctorAvailableSlots = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { date } = req.query;
+  
+  const query = { 
+    doctorId: id,
+    isBooked: false,
+    startTime: { $gt: new Date() }
+  };
+  
+  if (date) {
+    // Create start and end dates for the given date
+    const startDate = new Date(date);
+    startDate.setHours(0, 0, 0, 0);
+    
+    const endDate = new Date(date);
+    endDate.setHours(23, 59, 59, 999);
+    
+    query.startTime = { $gte: startDate, $lte: endDate };
+  }
+  
+  const slots = await AppointmentSlot.find(query).sort({ startTime: 1 });
+  
+  return res
+    .status(200)
+    .json(new ApiResponse(200, { count: slots.length, slots }, "Available slots fetched successfully"));
+});
+
+// Book an appointment and create payment
+const bookAppointment = asyncHandler(async (req, res) => {
+  const { slotId, notes } = req.body;
+  
+  // Find the slot
+  const slot = await AppointmentSlot.findById(slotId);
+  if (!slot) {
+    throw new ApiError(404, "Appointment slot not found");
+  }
+  
+  if (slot.isBooked) {
+    throw new ApiError(400, "This slot is already booked");
+  }
+  
+  // Create appointment
+  const appointment = await Appointment.create({
+    slotId: slot._id,
+    doctorId: slot.doctorId,
+    clientId: req.client._id,
+    appointmentDate: slot.startTime,
+    notes,
+    status: 'pending',
+    paymentStatus: 'pending',
+    paymentAmount: slot.fee
   });
   
+  // Create payment record
+  const payment = await Payment.create({
+    appointmentId: appointment._id,
+    clientId: req.client._id,
+    doctorId: slot.doctorId,
+    amount: slot.fee,
+    status: 'pending'
+  });
+  
+  // Create PayPal order
+  const order = await createPayPalOrder(slot.fee, appointment._id);
+  
+  // Update payment with PayPal order ID
+  payment.paypalOrderId = order.id;
+  await payment.save();
+  
+  // Mark slot as booked
+  slot.isBooked = true;
+  await slot.save();
+  
+  return res
+    .status(201)
+    .json(new ApiResponse(201, {
+      appointment,
+      payment: {
+        id: payment._id,
+        amount: payment.amount,
+        status: payment.status
+      },
+      paypal: {
+        orderId: order.id,
+        links: order.links
+      }
+    }, "Appointment booked successfully"));
+});
 
-export { registerClient, loginClient, verifyEmail, logoutClient, updateClient, refreshAccessToken,verifyOtp,getCurrentClient };
+// Get all appointments for a client
+const getClientAppointments = asyncHandler(async (req, res) => {
+  const { status } = req.query;
+  
+  const query = { clientId: req.client._id };
+  if (status) {
+    query.status = status;
+  }
+  
+  const appointments = await Appointment.find(query)
+    .populate('doctorId', 'name specialization')
+    .populate('slotId')
+    .sort({ appointmentDate: -1 });
+  
+  return res
+    .status(200)
+    .json(new ApiResponse(200, { count: appointments.length, appointments }, "Appointments fetched successfully"));
+});
+
+// Get details of a specific appointment
+const getAppointmentDetail = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  
+  const appointment = await Appointment.findOne({
+    _id: id,
+    clientId: req.client._id
+  })
+    .populate('doctorId', 'name specialization email')
+    .populate('slotId');
+  
+  if (!appointment) {
+    throw new ApiError(404, "Appointment not found");
+  }
+  
+  // Get payment info
+  const payment = await Payment.findOne({ appointmentId: appointment._id });
+  
+  return res
+    .status(200)
+    .json(new ApiResponse(200, { appointment, payment }, "Appointment details fetched successfully"));
+});
+
+// Cancel an appointment
+const cancelAppointment = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  
+  const appointment = await Appointment.findOne({
+    _id: id,
+    clientId: req.client._id,
+    status: { $nin: ['completed', 'cancelled'] }
+  });
+  
+  if (!appointment) {
+    throw new ApiError(404, "Appointment not found or cannot be cancelled");
+  }
+  
+  appointment.status = 'cancelled';
+  await appointment.save();
+  
+  // Update payment status if payment was made
+  if (appointment.paymentStatus === 'completed') {
+    const payment = await Payment.findOne({ appointmentId: appointment._id });
+    if (payment) {
+      payment.status = 'refunded';
+      await payment.save();
+    }
+    
+    appointment.paymentStatus = 'refunded';
+    await appointment.save();
+  }
+  
+  // Release the slot
+  await AppointmentSlot.findByIdAndUpdate(appointment.slotId, { isBooked: false });
+  
+  return res
+    .status(200)
+    .json(new ApiResponse(200, appointment, "Appointment cancelled successfully"));
+});
+
+export { 
+  registerClient, 
+  loginClient, 
+  verifyEmail, 
+  logoutClient, 
+  updateClient, 
+  refreshAccessToken,
+  verifyOtp,
+  getCurrentClient,
+  // Appointment related exports
+  getDoctors,
+  getDoctorDetail,
+  getDoctorAvailableSlots,
+  bookAppointment,
+  getClientAppointments,
+  getAppointmentDetail,
+  cancelAppointment
+};
