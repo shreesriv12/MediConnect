@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { useTheme } from '../context/ThemeContext'; // Using the custom hook you defined
+import '../pages/theme.css'
 
 const Footer = () => {
   const { theme } = useTheme(); // Using the custom hook to access theme

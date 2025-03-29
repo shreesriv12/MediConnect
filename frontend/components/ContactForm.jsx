@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useTheme } from '../context/ThemeContext';
+import '../pages/theme.css'
+
 const ContactForm = () => {
   const { theme } = useTheme(); // Use the theme hook
   

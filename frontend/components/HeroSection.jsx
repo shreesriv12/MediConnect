@@ -2,6 +2,8 @@ import React, { useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import * as THREE from 'three';
 import { gsap } from 'gsap';
+import '../pages/theme.css'
+
 import { useTheme } from '../context/ThemeContext';
 const HeroSection = () => {
   const canvasRef = useRef(null);

@@ -1,6 +1,8 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { useTheme } from '../context/ThemeContext';
+import '../pages/theme.css'
+
 
 const AboutUs = () => {
   const { theme } = useTheme();
