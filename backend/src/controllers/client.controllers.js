@@ -116,13 +116,29 @@ const loginClient = asyncHandler(async (req, res) => {
 });
   
 const verifyEmail = asyncHandler(async (req, res) => {
-  const {token} = req.query || req.body.token || req.headers.authorization?.split(" ")[1];
+  const token = 
+    req.query.token || 
+    req.body.token || 
+    (req.headers.authorization && req.headers.authorization.split(" ")[1]);
+
   if (!token) throw new ApiError(400, "Token missing");
-  const decoded = jwt.verify(token, process.env.EMAIL_SECRET);
-  const client = await Client.findOneAndUpdate({ email: decoded.email }, { verified: true }, { new: true });
-  if (!client) throw new ApiError(400, "Invalid token");
-  res.status(200).json(new ApiResponse(200, "Email verified successfully"));
+
+  try {
+    const decoded = jwt.verify(token, process.env.EMAIL_SECRET);
+    const client = await Client.findOneAndUpdate(
+      { email: decoded.email },
+      { verified: true },
+      { new: true }
+    );
+
+    if (!client) throw new ApiError(400, "Invalid token");
+
+    res.status(200).json(new ApiResponse(200, "Email verified successfully"));
+  } catch (error) {
+    throw new ApiError(401, "Invalid or expired token");
+  }
 });
+
 
 const logoutClient = asyncHandler(async (req, res) => {
   await Client.findByIdAndUpdate(req.client._id, { refreshToken: null });
