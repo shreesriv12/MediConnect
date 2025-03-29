@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-
+import { useTheme } from '../context/ThemeContext';
 const serviceItems = [
   {
     icon: "🏥",
@@ -44,8 +44,13 @@ const itemVariants = {
 };
 
 const Services = () => {
+  const { theme } = useTheme();
+  
   return (
-    <section id="services" className="py-16 bg-gray-50">
+    <section 
+      id="services" 
+      className={`py-16 ${theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'} transition-colors duration-300`}
+    >
       <div className="container mx-auto px-6">
         <div className="text-center mb-12">
           <motion.h2
@@ -53,7 +58,7 @@ const Services = () => {
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
             viewport={{ once: true }}
-            className="text-3xl font-bold text-gray-900 mb-4"
+            className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'} mb-4 transition-colors duration-300`}
           >
             Our Services
           </motion.h2>
@@ -62,7 +67,7 @@ const Services = () => {
             whileInView={{ opacity: 1 }}
             transition={{ duration: 0.5, delay: 0.2 }}
             viewport={{ once: true }}
-            className="text-xl text-gray-600 max-w-2xl mx-auto"
+            className={`text-xl ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'} max-w-2xl mx-auto transition-colors duration-300`}
           >
             We provide a comprehensive platform to connect patients with healthcare professionals.
           </motion.p>
@@ -79,11 +84,19 @@ const Services = () => {
             <motion.div
               key={index}
               variants={itemVariants}
-              className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300"
+              className={`${
+                theme === 'dark' 
+                  ? 'bg-gray-800 hover:bg-gray-700 text-white' 
+                  : 'bg-white hover:shadow-lg text-gray-900'
+              } p-6 rounded-lg shadow-md transition-all duration-300`}
             >
               <div className="text-4xl mb-4">{service.icon}</div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">{service.title}</h3>
-              <p className="text-gray-600">{service.description}</p>
+              <h3 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'} mb-2 transition-colors duration-300`}>
+                {service.title}
+              </h3>
+              <p className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'} transition-colors duration-300`}>
+                {service.description}
+              </p>
             </motion.div>
           ))}
         </motion.div>

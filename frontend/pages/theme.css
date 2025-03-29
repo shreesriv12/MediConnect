@@ -1,0 +1,26 @@
+/* Add this to your global CSS file */
+:root {
+    --primary-color: #3b82f6;
+    --primary-dark: #2563eb;
+    --primary-light: #eff6ff;
+    --text-color: #111827;
+    --bg-color: #ffffff;
+    --nav-bg: #ffffff;
+    --card-bg: #f9fafb;
+  }
+  
+  [data-theme='dark'] {
+    --primary-color: #60a5fa;
+    --primary-dark: #3b82f6;
+    --primary-light: #1e3a8a;
+    --text-color: #f9fafb;
+    --bg-color: #111827;
+    --nav-bg: #1f2937;
+    --card-bg: #1f2937;
+  }
+  
+  body {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
