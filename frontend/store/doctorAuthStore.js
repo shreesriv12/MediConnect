@@ -1,239 +1,141 @@
-// src/store/doctorAuthStore.js
+// Add to useDoctorAuthStore.js
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 import axios from 'axios';
+
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-const useDoctorAuthStore = create(
-  persist(
-    (set, get) => ({
-      doctor: null,
-      accessToken: null,
-      refreshToken: null,
-      isLoading: false,
-      error: null,
-
-      // Register a new doctor
-      register: async (formData) => {
-        try {
-          set({ isLoading: true, error: null });
-          const response = await axios.post(`${API_URL}/doctors/register`, formData, {
-            headers: {
-              'Content-Type': 'multipart/form-data',
-            },
-          });
-          
-          const { doctor, accessToken, refreshToken } = response.data.data;
-          set({ 
-            doctor, 
-            accessToken, 
-            refreshToken, 
-            isLoading: false 
-          });
-          
-          return { success: true, doctorId: doctor._id };
-        } catch (error) {
-          set({ 
-            isLoading: false, 
-            error: error.response?.data?.message || 'Registration failed' 
-          });
-          return { success: false, error: get().error };
-        }
-      },
-
-      // Verify OTP
-      verifyOtp: async (doctorId, otp) => {
-        try {
-          set({ isLoading: true, error: null });
-          const response = await axios.post(`${API_URL}/doctors/verify-otp`, {
-            doctorId,
-            otp
-          });
-          
-          // Update tokens received after OTP verification
-          if (response.data.success) {
-            const { accessToken, refreshToken } = response.data.data;
-            set({ 
-              accessToken, 
-              refreshToken, 
-              isLoading: false 
-            });
-          }
-          
-          return { success: true };
-        } catch (error) {
-          set({ 
-            isLoading: false, 
-            error: error.response?.data?.message || 'OTP verification failed' 
-          });
-          return { success: false, error: get().error };
-        }
-      },
-
-      // Login doctor
-      login: async (email, password) => {
-        try {
-          set({ isLoading: true, error: null });
-          const response = await axios.post(`${API_URL}/doctors/login`, {
-            email,
-            password
-          });
-          
-          const { doctor, accessToken, refreshToken } = response.data.data;
-          set({ 
-            doctor, 
-            accessToken, 
-            refreshToken, 
-            isLoading: false 
-          });
-          
-          return { success: true };
-        } catch (error) {
-          set({ 
-            isLoading: false, 
-            error: error.response?.data?.message || 'Login failed' 
-          });
-          return { success: false, error: get().error };
-        }
-      },
-
-      // Get current doctor profile
-      getCurrentDoctor: async () => {
-        try {
-          set({ isLoading: true, error: null });
-          const response = await axios.get(`${API_URL}/doctors/me`, {
-            headers: {
-              Authorization: `Bearer ${get().accessToken}`
-            }
-          });
-          
-          set({ 
-            doctor: response.data.data, 
-            isLoading: false 
-          });
-          
-          return { success: true };
-        } catch (error) {
-          if (error.response?.status === 401) {
-            // Try to refresh token
-            const refreshed = await get().refreshToken();
-            if (refreshed.success) {
-              return get().getCurrentDoctor();
-            }
-          }
-          
-          set({ 
-            isLoading: false, 
-            error: error.response?.data?.message || 'Failed to fetch doctor profile' 
-          });
-          return { success: false, error: get().error };
-        }
-      },
-
-      // Refresh access token
-      refreshTokens: async () => {
-        try {
-          const currentRefreshToken = get().refreshToken;
-          if (!currentRefreshToken) {
-            set({ doctor: null, accessToken: null, refreshToken: null });
-            return { success: false, error: 'No refresh token available' };
-          }
-          
-          const response = await axios.post(`${API_URL}/doctors/refresh-token`, {
-            refreshToken: currentRefreshToken
-          });
-          
-          const { accessToken, refreshToken } = response.data.data;
-          set({ accessToken, refreshToken });
-          
-          return { success: true };
-        } catch (error) {
-          set({ 
-            doctor: null, 
-            accessToken: null, 
-            refreshToken: null, 
-            error: 'Session expired. Please login again.' 
-          });
-          return { success: false, error: get().error };
-        }
-      },
-
-      // Logout doctor
-      logout: async () => {
-        try {
-          await axios.post(`${API_URL}/doctors/logout`, {}, {
-            headers: {
-              Authorization: `Bearer ${get().accessToken}`
-            }
-          });
-          
-          set({ 
-            doctor: null, 
-            accessToken: null, 
-            refreshToken: null, 
-            error: null 
-          });
-          
-          return { success: true };
-        } catch (error) {
-          // Still clear the state even if server-side logout fails
-          set({ 
-            doctor: null, 
-            accessToken: null, 
-            refreshToken: null, 
-            error: null
-          });
-          
-          return { success: true };
-        }
-      },
-
-      // Update doctor profile
-      updateProfile: async (formData) => {
-        try {
-          set({ isLoading: true, error: null });
-          const response = await axios.patch(`${API_URL}/doctors/update`, formData, {
-            headers: {
-              Authorization: `Bearer ${get().accessToken}`,
-              'Content-Type': 'multipart/form-data',
-            }
-          });
-          
-          set({ 
-            doctor: response.data.data, 
-            isLoading: false 
-          });
-          
-          return { success: true };
-        } catch (error) {
-          if (error.response?.status === 401) {
-            const refreshed = await get().refreshTokens();
-            if (refreshed.success) {
-              return get().updateProfile(formData);
-            }
-          }
-          
-          set({ 
-            isLoading: false, 
-            error: error.response?.data?.message || 'Failed to update profile' 
-          });
-          return { success: false, error: get().error };
-        }
-      },
-
-      // Clear any errors
-      clearError: () => set({ error: null })
-    }),
-    {
-      name: 'doctor-auth-storage',
-      partialize: (state) => ({
-        doctor: state.doctor,
-        accessToken: state.accessToken,
-        refreshToken: state.refreshToken
-      })
+const useDoctorAuthStore = create((set) => ({
+  doctor: null,
+  isLoading: false,
+  error: null,
+  
+  // Clear error state
+  clearError: () => set({ error: null }),
+  
+  // Register doctorx
+  register: async (formData) => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await axios.post(`${API_URL}/doctor/register`, formData);
+      set({ 
+        isLoading: false,
+        doctor: response.data.data
+      });
+      return { success: true, doctorId: response.data.data._id };
+    } catch (error) {
+      set({ 
+        isLoading: false, 
+        error: error.response?.data?.message || 'Registration failed'
+      });
+      return { success: false, error: error.response?.data?.message || 'Registration failed' };
     }
-  )
-);
+  },
+  
+  // Verify OTP
+  verifyOtp: async (doctorId, otp) => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await axios.post(`${API_URL}/doctor/verify-otp`, { doctorId, otp });
+      set({ isLoading: false });
+      return { success: true };
+    } catch (error) {
+      set({ 
+        isLoading: false, 
+        error: error.response?.data?.message || 'OTP verification failed'
+      });
+      return { success: false, error: error.response?.data?.message || 'OTP verification failed' };
+    }
+  },
+  
+  // Add the verifyEmail function
+  verifyEmail: async (token) => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await axios.get(`${API_URL}/doctor/verify-email?token=${token}`);
+      set({ isLoading: false });
+      return { success: true, message: response.data.data.message };
+    } catch (error) {
+      set({ 
+        isLoading: false, 
+        error: error.response?.data?.message || 'Email verification failed'
+      });
+      return { success: false, error: error.response?.data?.message || 'Email verification failed' };
+    }
+  },
+  
+  // Login doctor
+  login: async (credentials) => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await axios.post(`${API_URL}/doctor/login`, credentials);
+      set({ 
+        isLoading: false,
+        doctor: response.data.data.doctor
+      });
+      return { success: true };
+    } catch (error) {
+      set({ 
+        isLoading: false, 
+        error: error.response?.data?.message || 'Login failed'
+      });
+      return { success: false, error: error.response?.data?.message || 'Login failed' };
+    }
+  },
+  
+  // Logout doctor
+  logout: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      await axios.post('/doctor/logout');
+      set({ isLoading: false, doctor: null });
+      return { success: true };
+    } catch (error) {
+      set({ 
+        isLoading: false, 
+        error: error.response?.data?.message || 'Logout failed'
+      });
+      return { success: false };
+    }
+  },
+  
+  // Get current doctor
+  getCurrentDoctor: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await axios.get('/doctor/me');
+      set({ 
+        isLoading: false,
+        doctor: response.data.data
+      });
+      return { success: true };
+    } catch (error) {
+      set({ 
+        isLoading: false, 
+        error: error.response?.data?.message || 'Failed to fetch doctor data'
+      });
+      return { success: false };
+    }
+  },
+  
+  // Update doctor profile
+  updateProfile: async (formData) => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await axios.patch('/doctor/update', formData);
+      set({ 
+        isLoading: false,
+        doctor: response.data.data
+      });
+      return { success: true };
+    } catch (error) {
+      set({ 
+        isLoading: false, 
+        error: error.response?.data?.message || 'Profile update failed'
+      });
+      return { success: false, error: error.response?.data?.message || 'Profile update failed' };
+    }
+  }
+}));
 
 export default useDoctorAuthStore;

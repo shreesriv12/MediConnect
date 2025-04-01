@@ -19,7 +19,7 @@ const DoctorLogin = () => {
   // If user is already logged in, redirect to dashboard
   useEffect(() => {
     if (doctor) {
-      navigate('/dashboard');
+      navigate('/doctordashboard');
     }
   }, [doctor, navigate]);
 
@@ -58,9 +58,14 @@ const DoctorLogin = () => {
       return;
     }
     
-    const result = await login(formData.email, formData.password);
+    // Pass credentials as a single object instead of separate parameters
+    const result = await login({
+      email: formData.email,
+      password: formData.password
+    });
+    
     if (result.success) {
-      navigate('/dashboard');
+      navigate('/doctordashboard'); // Also fixed the route to match the useEffect check
     }
   };
 

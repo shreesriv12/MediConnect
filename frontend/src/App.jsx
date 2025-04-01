@@ -49,7 +49,7 @@ function App() {
             <Route path="/login" element={<DoctorLogin />} />
             <Route path="/signup" element={<DoctorSignup />} />
             <Route
-              path="/dashboard/*"
+              path="/doctordashboard/*"
               element={
                 <ProtectedRoute>
                   <DoctorDashboard />

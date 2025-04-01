@@ -2,10 +2,14 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useTheme } from '../context/ThemeContext';
 import { useNavigate } from 'react-router-dom';
+import useDoctorAuthStore from '../store/doctorAuthStore';
 
 const DoctorSignup = () => {
   const { theme } = useTheme();
   const navigate = useNavigate();
+  
+  // Get store functions and state
+  const { register, verifyOtp, verifyEmail, isLoading, error, clearError } = useDoctorAuthStore();
   
   const [formData, setFormData] = useState({
     name: '',
@@ -17,17 +21,18 @@ const DoctorSignup = () => {
     experience: '',
     degree: '',
     age: '',
-    gender: 'male',
+    gender: 'Male',
     avatar: null
   });
   
   const [avatarPreview, setAvatarPreview] = useState('');
   const [formErrors, setFormErrors] = useState({});
-  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [showVerificationModal, setShowVerificationModal] = useState(false);
   const [doctorId, setDoctorId] = useState('');
   const [otp, setOtp] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [emailCode, setEmailCode] = useState('');
+  const [storeError, setStoreError] = useState('');
+  const [verificationMethod, setVerificationMethod] = useState('email'); // 'email' or 'phone'
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -70,8 +75,10 @@ const DoctorSignup = () => {
     else if (!/\S+@\S+\.\S+/.test(formData.email)) errors.email = 'Email is invalid';
     
     if (!formData.phone.trim()) errors.phone = 'Phone number is required';
-    else if (!/^\d{10}$/.test(formData.phone)) errors.phone = 'Phone must be 10 digits';
-    
+    else if (!/^\+91\d{10}$/.test(formData.phone)) {
+      errors.phone = 'Phone number must be in the format +91XXXXXXXXXX';
+    }
+        
     if (!formData.password) errors.password = 'Password is required';
     else if (formData.password.length < 6) errors.password = 'Password must be at least 6 characters';
     
@@ -93,7 +100,8 @@ const DoctorSignup = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
+    clearError();
+    setStoreError('');
     
     const errors = validateForm();
     if (Object.keys(errors).length > 0) {
@@ -101,27 +109,25 @@ const DoctorSignup = () => {
       return;
     }
     
-    setIsLoading(true);
+    // Create FormData for file upload
+    const data = new FormData();
+    Object.keys(formData).forEach(key => {
+      if (key !== 'confirmPassword' && formData[key] !== null) {
+        data.append(key, formData[key]);
+      }
+    });
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      const result = await register(data);
       
-      // Create FormData for file upload
-      const data = new FormData();
-      Object.keys(formData).forEach(key => {
-        if (key !== 'confirmPassword' && formData[key] !== null) {
-          data.append(key, formData[key]);
-        }
-      });
-      
-      // Simulate successful registration
-      setDoctorId("DOCTOR123");
-      setShowOtpModal(true);
-      setIsLoading(false);
+      if (result.success) {
+        setDoctorId(result.doctorId);
+        setShowVerificationModal(true);
+      } else {
+        setStoreError(result.error || 'Registration failed. Please try again.');
+      }
     } catch (err) {
-      setIsLoading(false);
-      setError('Registration failed. Please try again.');
+      setStoreError('Registration failed. Please try again.');
     }
   };
 
@@ -134,23 +140,70 @@ const DoctorSignup = () => {
       return;
     }
     
-    setIsLoading(true);
+    clearError();
+    setStoreError('');
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Simulate successful verification
-      setIsLoading(false);
-      navigate('/doctor/dashboard');
+      const result = await verifyOtp(doctorId, otp);
+      console.log(doctorId);
+      console.log(otp);
+      if (result.success) {
+        navigate('/doctordashboard');
+      } else {
+        setFormErrors({
+          ...formErrors,
+          otp: result.error || 'Invalid OTP. Please try again.'
+        });
+      }
     } catch (err) {
-      setIsLoading(false);
       setFormErrors({
         ...formErrors,
-        otp: 'Invalid OTP. Please try again.'
+        otp: 'Error verifying OTP. Please try again.'
       });
     }
   };
+
+  const handleVerifyEmail = async () => {
+    if (!emailCode || emailCode.length !== 6) {
+      setFormErrors({
+        ...formErrors,
+        emailCode: 'Please enter a valid 6-digit verification code'
+      });
+      return;
+    }
+    
+    clearError();
+    setStoreError('');
+    
+    try {
+      const result = await verifyEmail(doctorId, emailCode);
+      
+      if (result.success) {
+        navigate('/doctordashboard');
+      } else {
+        setFormErrors({
+          ...formErrors,
+          emailCode: result.error || 'Invalid verification code. Please try again.'
+        });
+      }
+    } catch (err) {
+      setFormErrors({
+        ...formErrors,
+        emailCode: 'Error verifying email. Please try again.'
+      });
+    }
+  };
+
+  const handleVerify = () => {
+    if (verificationMethod === 'phone') {
+      handleVerifyOtp();
+    } else {
+      handleVerifyEmail();
+    }
+  };
+
+  // Display error from store or local state
+  const displayError = storeError || error;
 
   return (
     <div className={`max-w-4xl mx-auto p-6 rounded-lg shadow-md ${
@@ -160,11 +213,11 @@ const DoctorSignup = () => {
         theme === 'dark' ? 'text-white' : 'text-gray-800'
       }`}>Doctor Registration</h2>
       
-      {error && (
+      {displayError && (
         <div className={`mb-4 p-3 rounded ${
           theme === 'dark' ? 'bg-red-900 text-red-200' : 'bg-red-100 text-red-700'
         }`}>
-          {error}
+          {displayError}
         </div>
       )}
       
@@ -276,9 +329,9 @@ const DoctorSignup = () => {
                   theme === 'dark' ? 'focus:ring-blue-500' : 'focus:ring-blue-600'
                 }`}
               >
-                <option value="male">Male</option>
-                <option value="female">Female</option>
-                <option value="other">Other</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
               </select>
             </div>
           </div>
@@ -454,51 +507,111 @@ const DoctorSignup = () => {
             {isLoading ? 'Registering...' : 'Register'}
           </motion.button>
         </div>
-        
-      
       </form>
       
-      {/* OTP Verification Modal */}
-      {showOtpModal && (
+      {/* Verification Modal */}
+      {showVerificationModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className={`p-6 rounded-lg max-w-md w-full ${
             theme === 'dark' ? 'bg-gray-800 text-white' : 'bg-white text-gray-800'
           }`}>
             <h3 className={`text-xl font-bold mb-4 ${
               theme === 'dark' ? 'text-white' : 'text-gray-800'
-            }`}>Verify Your Phone</h3>
-            <p className={`mb-4 ${
-              theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
-            }`}>
-              We've sent a 6-digit OTP to your phone number. Please enter it below to verify your account.
-            </p>
+            }`}>Verify Your Account</h3>
             
-            <div className="mb-4">
-              <label className={`block mb-1 ${
-                theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-              }`}>Enter OTP</label>
-              <input
-                type="text"
-                value={otp}
-                onChange={(e) => setOtp(e.target.value)}
-                className={`w-full px-4 py-2 rounded-md ${
-                  theme === 'dark' 
-                    ? 'bg-gray-700 text-white border-gray-600 focus:border-blue-500' 
-                    : 'bg-white text-gray-900 border-gray-300 focus:border-blue-600'
-                } border focus:outline-none focus:ring-1 ${
-                  theme === 'dark' ? 'focus:ring-blue-500' : 'focus:ring-blue-600'
-                } ${formErrors.otp ? (theme === 'dark' ? 'border-red-500' : 'border-red-500') : ''}`}
-                placeholder="Enter 6-digit OTP"
-                maxLength={6}
-              />
-              {formErrors.otp && <p className="mt-1 text-red-500 text-sm">{formErrors.otp}</p>}
+            {/* Verification method tabs */}
+            <div className="flex mb-6 border-b border-gray-600">
+              <button
+                onClick={() => setVerificationMethod('email')}
+                className={`flex-1 py-2 px-4 text-center ${
+                  verificationMethod === 'email' 
+                    ? theme === 'dark' 
+                      ? 'bg-gray-700 border-b-2 border-blue-500' 
+                      : 'bg-gray-100 border-b-2 border-blue-600'
+                    : ''
+                }`}
+              >
+                Email Verification
+              </button>
+              <button
+                onClick={() => setVerificationMethod('phone')}
+                className={`flex-1 py-2 px-4 text-center ${
+                  verificationMethod === 'phone' 
+                    ? theme === 'dark' 
+                      ? 'bg-gray-700 border-b-2 border-blue-500' 
+                      : 'bg-gray-100 border-b-2 border-blue-600'
+                    : ''
+                }`}
+              >
+                Phone Verification
+              </button>
             </div>
+            
+            {verificationMethod === 'email' ? (
+              <div>
+                <p className={`mb-4 ${
+                  theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
+                }`}>
+                  We've sent a 6-digit verification code to your email address. Please enter it below to verify your account.
+                </p>
+                
+                <div className="mb-4">
+                  <label className={`block mb-1 ${
+                    theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                  }`}>Enter Email Verification Code</label>
+                  <input
+                    type="text"
+                    value={emailCode}
+                    onChange={(e) => setEmailCode(e.target.value)}
+                    className={`w-full px-4 py-2 rounded-md ${
+                      theme === 'dark' 
+                        ? 'bg-gray-700 text-white border-gray-600 focus:border-blue-500' 
+                        : 'bg-white text-gray-900 border-gray-300 focus:border-blue-600'
+                    } border focus:outline-none focus:ring-1 ${
+                      theme === 'dark' ? 'focus:ring-blue-500' : 'focus:ring-blue-600'
+                    } ${formErrors.emailCode ? (theme === 'dark' ? 'border-red-500' : 'border-red-500') : ''}`}
+                    placeholder="Enter 6-digit code"
+                    maxLength={6}
+                  />
+                  {formErrors.emailCode && <p className="mt-1 text-red-500 text-sm">{formErrors.emailCode}</p>}
+                </div>
+              </div>
+            ) : (
+              <div>
+                <p className={`mb-4 ${
+                  theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
+                }`}>
+                  We've sent a 6-digit OTP to your phone number. Please enter it below to verify your account.
+                </p>
+                
+                <div className="mb-4">
+                  <label className={`block mb-1 ${
+                    theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                  }`}>Enter OTP</label>
+                  <input
+                    type="text"
+                    value={otp}
+                    onChange={(e) => setOtp(e.target.value)}
+                    className={`w-full px-4 py-2 rounded-md ${
+                      theme === 'dark' 
+                        ? 'bg-gray-700 text-white border-gray-600 focus:border-blue-500' 
+                        : 'bg-white text-gray-900 border-gray-300 focus:border-blue-600'
+                    } border focus:outline-none focus:ring-1 ${
+                      theme === 'dark' ? 'focus:ring-blue-500' : 'focus:ring-blue-600'
+                    } ${formErrors.otp ? (theme === 'dark' ? 'border-red-500' : 'border-red-500') : ''}`}
+                    placeholder="Enter 6-digit OTP"
+                    maxLength={6}
+                  />
+                  {formErrors.otp && <p className="mt-1 text-red-500 text-sm">{formErrors.otp}</p>}
+                </div>
+              </div>
+            )}
             
             <div className="flex justify-between">
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                onClick={() => setShowOtpModal(false)}
+                onClick={() => setShowVerificationModal(false)}
                 className={`px-4 py-2 rounded ${
                   theme === 'dark' 
                     ? 'bg-gray-700 text-white hover:bg-gray-600' 
@@ -510,7 +623,7 @@ const DoctorSignup = () => {
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                onClick={handleVerifyOtp}
+                onClick={handleVerify}
                 disabled={isLoading}
                 className={`px-4 py-2 rounded ${
                   theme === 'dark' 
@@ -518,21 +631,21 @@ const DoctorSignup = () => {
                     : 'bg-blue-600 hover:bg-blue-700 text-white'
                 } ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
               >
-                {isLoading ? 'Verifying...' : 'Verify OTP'}
+                {isLoading ? 'Verifying...' : 'Verify'}
               </motion.button>
             </div>
             
             <div className="mt-4 text-center">
               <p className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
-                Didn't receive the OTP?{' '}
+                Didn't receive the {verificationMethod === 'email' ? 'code' : 'OTP'}?{' '}
                 <button 
                   type="button"
                   className={`${
                     theme === 'dark' ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'
                   } hover:underline`}
                   onClick={() => {
-                    // Simulated resend functionality
-                    alert('OTP resent to your phone number.');
+                    // Could implement resend functionality here
+                    alert(`${verificationMethod === 'email' ? 'Verification code' : 'OTP'} resent to your ${verificationMethod === 'email' ? 'email address' : 'phone number'}.`);
                   }}
                 >
                   Resend
