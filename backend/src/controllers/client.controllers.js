@@ -38,7 +38,6 @@ const generateAccessRefreshTokens = async (clientId) => {
 
 const registerClient = asyncHandler(async (req, res) => {
   const { name, email, phone, password, age, gender } = req.body;
-
   if ([name, email, phone, password, age, gender].some((field) => !field?.trim())) {
     throw new ApiError(400, "All fields are required");
   }
