@@ -33,23 +33,14 @@ const DoctorSignup = () => {
   const [emailCode, setEmailCode] = useState('');
   const [storeError, setStoreError] = useState('');
   const [verificationMethod, setVerificationMethod] = useState('email'); // 'email' or 'phone'
-
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value
-    });
-    
-    // Clear validation error when user types
-    if (formErrors[name]) {
-      setFormErrors({
-        ...formErrors,
-        [name]: ''
-      });
-    }
+    setFormData((prevData) => ({
+      ...prevData,
+      [name]: value.trim(), // Trim whitespace from user input
+    }));
   };
-
+  
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -167,29 +158,30 @@ const DoctorSignup = () => {
     if (!emailCode || emailCode.length !== 6) {
       setFormErrors({
         ...formErrors,
-        emailCode: 'Please enter a valid 6-digit verification code'
+        emailCode: "Please enter a valid 6-digit verification code",
       });
       return;
     }
-    
+  
     clearError();
-    setStoreError('');
-    
+    setStoreError("");
+  
     try {
-      const result = await verifyEmail(doctorId, emailCode);
-      
+      console.log("Verifying:", formData.email, emailCode);
+
+      const result = await verifyEmail(formData.email, emailCode);
       if (result.success) {
-        navigate('/doctordashboard');
+        navigate("/doctordashboard");
       } else {
         setFormErrors({
           ...formErrors,
-          emailCode: result.error || 'Invalid verification code. Please try again.'
+          emailCode: result.error || "Invalid verification code. Please try again.",
         });
       }
     } catch (err) {
       setFormErrors({
         ...formErrors,
-        emailCode: 'Error verifying email. Please try again.'
+        emailCode: "Error verifying email. Please try again.",
       });
     }
   };

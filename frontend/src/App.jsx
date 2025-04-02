@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, RouterProvider } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import HeroSection from "../components/HeroSection";
 import Services from "../components/Services";
@@ -11,22 +11,8 @@ import DoctorSignup from '../pages/DoctorSignup';
 import DoctorDashboard from '../pages/DoctorDashboard';
 import { ThemeProvider } from '../context/ThemeContext';
 import useDoctorAuthStore from '../store/doctorAuthStore';
-
-const ProtectedRoute = ({ children }) => {
-  const { doctor, accessToken, refreshTokens } = useDoctorAuthStore();
-  
-  useEffect(() => {
-    if (!doctor && accessToken) {
-      refreshTokens();
-    }
-  }, [accessToken, doctor, refreshTokens]);
-  
-  if (!doctor) {
-    return <Navigate to="/login" />;
-  }
-  
-  return children;
-};
+import ClientDashboard from '../pages/ClientDashboard';
+import HomePage from '../pages/HomePage';
 
 function App() {
   const { getCurrentDoctor } = useDoctorAuthStore();
@@ -39,23 +25,12 @@ function App() {
     <ThemeProvider>
       <Router>
         <div className="app">
-          <Navbar />
-          <HeroSection />
-      <Services />
-      <AboutUs />
-      <ContactForm />
-      <Footer />
           <Routes>
+          <Route path="/" element={<HomePage/>}/>
             <Route path="/login" element={<DoctorLogin />} />
             <Route path="/signup" element={<DoctorSignup />} />
-            <Route
-              path="/doctordashboard/*"
-              element={
-                <ProtectedRoute>
-                  <DoctorDashboard />
-                </ProtectedRoute>
-              }
-            />
+            <Route path="/doctordashboard" element={<DoctorDashboard /> } />
+            <Route path="/clientdashboard" element={<ClientDashboard/>}/>
           </Routes>
         </div>
       </Router>

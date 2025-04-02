@@ -70,8 +70,8 @@ const DoctorLogin = () => {
   };
 
   return (
-    <div className={`min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 ${
-      theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'
+    <div className={`max-w-4xl mx-auto p-6 rounded-lg shadow-md ${
+      theme === 'dark' ? 'bg-gray-800 text-white' : 'bg-white text-gray-800'
     }`}>
       <div className={`max-w-md w-full space-y-8 p-8 rounded-xl shadow-md ${
         theme === 'dark' ? 'bg-gray-800' : 'bg-white'
