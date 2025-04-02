@@ -1,4 +1,3 @@
-
 import Doctor from "../models/doctor.models.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
@@ -11,7 +10,6 @@ import { sendOtp } from "../utils/sendotp.js";
 import AppointmentSlot from "../models/appointmentSlot.model.js";
 const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
 
-
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
@@ -22,14 +20,10 @@ const transporter = nodemailer.createTransport({
 
 const generateAccessRefreshTokens = async (doctorId) => {
   try {
-    // Generate Access and Refresh Tokens
     const doctor = await Doctor.findById(doctorId);
     const accessToken = doctor.generateAccessToken();
     const refreshToken = doctor.generateRefreshToken();
-
-    // Save Refresh Token in Database
     doctor.refreshToken = refreshToken;
-    // Save User
     await doctor.save({ validateBeforeSave: false });
     return { accessToken, refreshToken };
   } catch (err) {
@@ -49,25 +43,21 @@ const registerDoctor = asyncHandler(async (req, res) => {
 
   const existingDoctor = await Doctor.findOne({ $or: [{ email }, { phone }] });
   if (existingDoctor) throw new ApiError(400, "Email or phone number already exists");
- 
-
-
-
+  
   if (!req.file?.path) throw new ApiError(400, "Avatar file is required");
   const avatar = await uploadToCloud(req.file.path);
   if (!avatar) throw new ApiError(500, "Avatar upload failed");
 
+  const otp = generateOTP();
+  const otpExpires = new Date(Date.now() + 5 * 60 * 1000);
 
-   // Generate OTP and set expiration time
-   const otp = generateOTP();
-   const otpExpires = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes expiry
- 
-   // Send OTP via SMS
-   const otpSent = await sendOtp(phone, otp);
-   if (!otpSent) throw new ApiError(500, "Failed to send OTP");
-
-
-  const verificationToken = jwt.sign({ email }, process.env.EMAIL_SECRET, { expiresIn: "1d" });
+  const emailSent = await transporter.sendMail({
+    from: process.env.EMAIL_USER,
+    to: email,
+    subject: "Your OTP for Email Verification",
+    html: `<p>Your OTP is: <strong>${otp}</strong></p><p>This OTP is valid for 5 minutes.</p>`,
+  });
+  if (!emailSent) throw new ApiError(500, "Failed to send email OTP");
 
   const doctor = await Doctor.create({
     name,
@@ -81,43 +71,30 @@ const registerDoctor = asyncHandler(async (req, res) => {
     gender,
     avatar: avatar.url,
     verified: false,
-    verificationToken,
     otp,
     otpExpires,
   });
 
-  const verificationLink = `${process.env.FRONTEND_URL}/verify-email?token=${verificationToken}`;
-  await transporter.sendMail({
-    from: process.env.EMAIL_USER,
-    to: doctor.email,
-    subject: "Verify Your Email",
-    html: `<p>Click <a href="${verificationLink}">here</a> to verify your email.</p>`,
-  });
-
   const userFromDB = await Doctor.findById(doctor._id).select("-password -refreshToken");
 
-  const { accessToken, refreshToken } = await generateAccessRefreshTokens(doctor._id);
-
-  const cookieOptions = {
-    httpOnly: true,
-    secure: true,
-  };
-
-  return res
-    .status(201)
-    .cookie("accessToken", accessToken, cookieOptions)
-    .cookie("refreshToken", refreshToken, cookieOptions)
-    .json(new ApiResponse(200, userFromDB, "Doctor Registered Successfully!"));
+  return res.status(201).json(new ApiResponse(200, userFromDB, "Doctor Registered Successfully! Please verify your email."));
 });
 
 const verifyEmail = asyncHandler(async (req, res) => {
-  const { token } = req.query;
-  if (!token) throw new ApiError(400, "Token missing");
+  const { email, otp } = req.body;
+  if (!email || !otp) throw new ApiError(400, "Email and OTP are required");
 
-  const decoded = jwt.verify(token, process.env.EMAIL_SECRET);
-  const doctor = await Doctor.findOneAndUpdate({ email: decoded.email }, { verified: true }, { new: true });
+  const doctor = await Doctor.findOne({ email });
+  if (!doctor) throw new ApiError(400, "Doctor not found");
 
-  if (!doctor) throw new ApiError(400, "Invalid token");
+  if (doctor.otp !== otp || doctor.otpExpires < new Date()) {
+    throw new ApiError(400, "Invalid or expired OTP");
+  }
+
+  doctor.verified = true;
+  doctor.otp = undefined;
+  doctor.otpExpires = undefined;
+  await doctor.save();
 
   res.status(200).json(new ApiResponse(200, { message: "Email verified successfully" }));
 });

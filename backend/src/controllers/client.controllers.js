@@ -54,8 +54,8 @@ const registerClient = asyncHandler(async (req, res) => {
   await transporter.sendMail({
     from: process.env.EMAIL_USER,
     to: email,
-    subject: "Verify Your Email",
-    html: `<p>Click <a href="${process.env.FRONTEND_URL}/verify-email?token=${verificationToken}">here</a> to verify your email.</p>`
+    subject: "Your OTP for Email Verification",
+    html: `<p>Your OTP is: <strong>${otp}</strong></p><p>This OTP is valid for 5 minutes.</p>`,
   });
 
   const client = await Client.create({ name, email, phone, password, age, gender, avatar, verified: false, verificationToken, otp, otpExpires });
@@ -115,27 +115,22 @@ const loginClient = asyncHandler(async (req, res) => {
 });
   
 const verifyEmail = asyncHandler(async (req, res) => {
-  const token = 
-    req.query.token || 
-    req.body.token || 
-    (req.headers.authorization && req.headers.authorization.split(" ")[1]);
+  const { email, otp } = req.body;
+  if (!email || !otp) throw new ApiError(400, "Email and OTP are required");
 
-  if (!token) throw new ApiError(400, "Token missing");
+  const client = await Client.findOne({ email });
+  if (!client) throw new ApiError(400, "Client not found");
 
-  try {
-    const decoded = jwt.verify(token, process.env.EMAIL_SECRET);
-    const client = await Client.findOneAndUpdate(
-      { email: decoded.email },
-      { verified: true },
-      { new: true }
-    );
-
-    if (!client) throw new ApiError(400, "Invalid token");
-
-    res.status(200).json(new ApiResponse(200, "Email verified successfully"));
-  } catch (error) {
-    throw new ApiError(401, "Invalid or expired token");
+  if (client.otp !== otp || client.otpExpires < new Date()) {
+    throw new ApiError(400, "Invalid or expired OTP");
   }
+
+  client.verified = true;
+  client.otp = undefined;
+  client.otpExpires = undefined;
+  await client.save();
+
+  res.status(200).json(new ApiResponse(200, { message: "Email verified successfully" }));
 });
 
 

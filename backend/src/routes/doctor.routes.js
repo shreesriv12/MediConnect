@@ -24,7 +24,7 @@ const router = Router();
 router.post('/register', upload.single('avatar'), registerDoctor);
 router.post('/login', loginDoctor);
 router.post('/verify-otp', verifyOtp);
-router.get('/verify-email', verifyEmail);
+router.post('/verify-email', verifyEmail);
 router.post('/logout', isAuthenticated, logoutDoctor);
 router.post('/refresh-token', refreshAccessToken);
 router.get('/me', isAuthenticated, getCurrentDoctor);

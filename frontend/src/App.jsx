@@ -13,7 +13,10 @@ import { ThemeProvider } from '../context/ThemeContext';
 import useDoctorAuthStore from '../store/doctorAuthStore';
 import ClientDashboard from '../pages/ClientDashboard';
 import HomePage from '../pages/HomePage';
-
+import DoctorProfile from '../components/DoctorProfile';
+import DoctorAppointments from '../components/doctorAppointments';
+import DoctorSchedule from '../components/DoctorSchedules';
+import DoctorDirectory from '../components/Doctordirectory';
 function App() {
   const { getCurrentDoctor } = useDoctorAuthStore();
   
@@ -31,6 +34,11 @@ function App() {
             <Route path="/signup" element={<DoctorSignup />} />
             <Route path="/doctordashboard" element={<DoctorDashboard /> } />
             <Route path="/clientdashboard" element={<ClientDashboard/>}/>
+            <Route path='/doctorprofile' element={<DoctorProfile/>}/>
+            <Route path='/doctorappointments' element={<DoctorAppointments/>}/>
+            <Route path='/doctorschedule' element={<DoctorSchedule/>}/>
+            <Route path='/doctordirectory' element={<DoctorDirectory/>}/>
+
           </Routes>
         </div>
       </Router>

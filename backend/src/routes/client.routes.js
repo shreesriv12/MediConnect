@@ -25,7 +25,7 @@ const router = Router();
 // Authentication routes
 router.post('/register', upload.single('avatar'), registerClient);
 router.post('/login', loginClient);
-router.get('/verify-email', verifyEmail);
+router.post('/verify-email', verifyEmail);
 router.post('/verify-otp', verifyOtp);
 router.post('/logout', isAuthenticated, logoutClient);
 router.post('/refresh-token', refreshAccessToken);
