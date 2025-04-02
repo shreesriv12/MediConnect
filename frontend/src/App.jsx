@@ -1,11 +1,5 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, RouterProvider } from 'react-router-dom';
-import Navbar from '../components/Navbar';
-import HeroSection from "../components/HeroSection";
-import Services from "../components/Services";
-import AboutUs from "../components/AboutUs"; // Added missing import
-import ContactForm from "../components/ContactForm";
-import Footer from "../components/Footer";
 import DoctorLogin from '../pages/DoctorLogin';
 import DoctorSignup from '../pages/DoctorSignup';
 import DoctorDashboard from '../pages/DoctorDashboard';
@@ -17,6 +11,7 @@ import DoctorProfile from '../components/DoctorProfile';
 import DoctorAppointments from '../components/doctorAppointments';
 import DoctorSchedule from '../components/DoctorSchedules';
 import DoctorDirectory from '../components/Doctordirectory';
+import ChatBot from '../components/ChatBot';
 function App() {
   const { getCurrentDoctor } = useDoctorAuthStore();
   
@@ -38,7 +33,7 @@ function App() {
             <Route path='/doctorappointments' element={<DoctorAppointments/>}/>
             <Route path='/doctorschedule' element={<DoctorSchedule/>}/>
             <Route path='/doctordirectory' element={<DoctorDirectory/>}/>
-
+            <Route path='/chatbot' element={<ChatBot/>}/>
           </Routes>
         </div>
       </Router>
