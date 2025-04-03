@@ -3,8 +3,10 @@ import Doctor from "../models/doctor.models.js";
 import { ApiError } from "../utils/ApiError.js";
 import Client from "../models/client.model.js";
 export const isAuthenticated = async (req, res, next) => {
-  const token = req.cookies.accessToken || req.header("Authorization")?.replace("Bearer ", "");
-
+// Update this line in auth.middleware.js
+const token = req.cookies.accessToken || 
+              (req.headers.authorization && req.headers.authorization.startsWith('Bearer ') ? 
+                req.headers.authorization.split(' ')[1] : null);  console.log("Received token:", token);
   if (!token) {
     return next(new ApiError(401, "Unauthorized: No token provided"));
   }

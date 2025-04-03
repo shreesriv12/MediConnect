@@ -1,16 +1,37 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import * as THREE from 'three';
 import { gsap } from 'gsap';
 import '../pages/theme.css'
 
 import { useTheme } from '../context/ThemeContext';
+
 const HeroSection = () => {
   const canvasRef = useRef(null);
   const sceneRef = useRef(null);
+  const rendererRef = useRef(null);
+  const animationFrameRef = useRef(null);
+  const sectionRef = useRef(null);
+  const [isVisible, setIsVisible] = useState(true);
   const { theme } = useTheme();
   
   useEffect(() => {
+    // Intersection Observer setup to detect when section is visible
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsVisible(entry.isIntersecting);
+      },
+      {
+        root: null,
+        rootMargin: '0px',
+        threshold: 0.1  // Trigger when at least 10% of the element is visible
+      }
+    );
+    
+    if (sectionRef.current) {
+      observer.observe(sectionRef.current);
+    }
+    
     // Three.js scene setup
     const canvas = canvasRef.current;
     const scene = new THREE.Scene();
@@ -35,6 +56,7 @@ const HeroSection = () => {
       antialias: true,
       powerPreference: "high-performance"
     });
+    rendererRef.current = renderer;
     renderer.setSize(sizes.width, sizes.height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.shadowMap.enabled = true;
@@ -147,106 +169,142 @@ const HeroSection = () => {
     scene.add(pointLight3);
     
     // Enhanced GSAP Animations
-    // Main sphere rotation - more natural movement
-    gsap.to(mainSphere.rotation, {
-      y: Math.PI * 2,
-      duration: 35,
-      ease: "power1.inOut",
-      repeat: -1
-    });
+    const animations = [];
     
-    gsap.to(mainSphere.rotation, {
-      x: Math.PI * 0.2,
-      duration: 20,
-      ease: "sine.inOut",
-      yoyo: true,
-      repeat: -1
-    });
+    // Main sphere rotation - more natural movement
+    animations.push(
+      gsap.to(mainSphere.rotation, {
+        y: Math.PI * 2,
+        duration: 35,
+        ease: "power1.inOut",
+        repeat: -1
+      })
+    );
+    
+    animations.push(
+      gsap.to(mainSphere.rotation, {
+        x: Math.PI * 0.2,
+        duration: 20,
+        ease: "sine.inOut",
+        yoyo: true,
+        repeat: -1
+      })
+    );
     
     // Subtle scale pulsing for main sphere
-    gsap.to(mainSphere.scale, {
-      x: 1.05,
-      y: 1.05,
-      z: 1.05,
-      duration: 8,
-      ease: "sine.inOut",
-      yoyo: true,
-      repeat: -1
-    });
+    animations.push(
+      gsap.to(mainSphere.scale, {
+        x: 1.05,
+        y: 1.05,
+        z: 1.05,
+        duration: 8,
+        ease: "sine.inOut",
+        yoyo: true,
+        repeat: -1
+      })
+    );
     
     // Glow sphere animations - counter rotation
-    gsap.to(glowSphere.rotation, {
-      y: -Math.PI * 2,
-      duration: 40,
-      ease: "none",
-      repeat: -1
-    });
+    animations.push(
+      gsap.to(glowSphere.rotation, {
+        y: -Math.PI * 2,
+        duration: 40,
+        ease: "none",
+        repeat: -1
+      })
+    );
     
-    gsap.to(glowSphere.rotation, {
-      x: -Math.PI * 0.15,
-      duration: 25,
-      ease: "sine.inOut",
-      yoyo: true,
-      repeat: -1
-    });
+    animations.push(
+      gsap.to(glowSphere.rotation, {
+        x: -Math.PI * 0.15,
+        duration: 25,
+        ease: "sine.inOut",
+        yoyo: true,
+        repeat: -1
+      })
+    );
     
     // Core animations
-    gsap.to(coreSphere.rotation, {
-      y: Math.PI * 2,
-      duration: 15,
-      ease: "power1.inOut",
-      repeat: -1
-    });
+    animations.push(
+      gsap.to(coreSphere.rotation, {
+        y: Math.PI * 2,
+        duration: 15,
+        ease: "power1.inOut",
+        repeat: -1
+      })
+    );
     
-    gsap.to(coreSphere.scale, {
-      x: 1.1,
-      y: 1.1,
-      z: 1.1,
-      duration: 4,
-      ease: "sine.inOut",
-      yoyo: true,
-      repeat: -1
-    });
+    animations.push(
+      gsap.to(coreSphere.scale, {
+        x: 1.1,
+        y: 1.1,
+        z: 1.1,
+        duration: 4,
+        ease: "sine.inOut",
+        yoyo: true,
+        repeat: -1
+      })
+    );
     
     // Smooth camera movement
-    gsap.to(camera.position, {
-      y: 0.3,
-      duration: 10,
-      ease: "sine.inOut",
-      yoyo: true,
-      repeat: -1
-    });
+    animations.push(
+      gsap.to(camera.position, {
+        y: 0.3,
+        duration: 10,
+        ease: "sine.inOut",
+        yoyo: true,
+        repeat: -1
+      })
+    );
     
-    gsap.to(camera.position, {
-      x: 2.7,
-      duration: 15,
-      ease: "sine.inOut",
-      yoyo: true,
-      repeat: -1
-    });
+    animations.push(
+      gsap.to(camera.position, {
+        x: 2.7,
+        duration: 15,
+        ease: "sine.inOut",
+        yoyo: true,
+        repeat: -1
+      })
+    );
     
     // Particles animation - slow rotation
-    gsap.to(particlesMesh.rotation, {
-      y: Math.PI * 0.15,
-      duration: 40,
-      ease: "sine.inOut",
-      yoyo: true,
-      repeat: -1
-    });
+    animations.push(
+      gsap.to(particlesMesh.rotation, {
+        y: Math.PI * 0.15,
+        duration: 40,
+        ease: "sine.inOut",
+        yoyo: true,
+        repeat: -1
+      })
+    );
     
-    gsap.to(particlesMesh.rotation, {
-      x: Math.PI * 0.1,
-      duration: 45,
-      ease: "sine.inOut",
-      yoyo: true,
-      repeat: -1
-    });
+    animations.push(
+      gsap.to(particlesMesh.rotation, {
+        x: Math.PI * 0.1,
+        duration: 45,
+        ease: "sine.inOut",
+        yoyo: true,
+        repeat: -1
+      })
+    );
+    
+    // Function to pause/resume animations
+    const toggleAnimations = (play) => {
+      animations.forEach(anim => {
+        if (play) {
+          anim.play();
+        } else {
+          anim.pause();
+        }
+      });
+    };
     
     // Enhanced mouse interaction
     let mouseX = 0;
     let mouseY = 0;
     
     const handleMouseMove = (event) => {
+      if (!isVisible) return;
       mouseX = (event.clientX / sizes.width - 0.5) * 0.2;
       mouseY = (event.clientY / sizes.height - 0.5) * 0.15;
     };
@@ -269,31 +327,48 @@ const HeroSection = () => {
     
     // Enhanced animation loop with mouse interaction
     const animate = () => {
-      // Apply subtle mouse movement
-      const targetX = mainSphere.position.x + mouseX * 0.5;
-      const targetY = mainSphere.position.y + mouseY * 0.5;
+      if (isVisible) {
+        // Apply subtle mouse movement
+        const targetX = mainSphere.position.x + mouseX * 0.5;
+        const targetY = mainSphere.position.y + mouseY * 0.5;
+        
+        mainSphere.position.x += (targetX - mainSphere.position.x) * 0.05;
+        mainSphere.position.y += (targetY - mainSphere.position.y) * 0.05;
+        
+        glowSphere.position.x = mainSphere.position.x;
+        glowSphere.position.y = mainSphere.position.y;
+        
+        coreSphere.position.x = mainSphere.position.x;
+        coreSphere.position.y = mainSphere.position.y;
+        
+        // Subtle particle movement
+        particlesMesh.rotation.y += 0.0005;
+        
+        renderer.render(scene, camera);
+      }
       
-      mainSphere.position.x += (targetX - mainSphere.position.x) * 0.05;
-      mainSphere.position.y += (targetY - mainSphere.position.y) * 0.05;
-      
-      glowSphere.position.x = mainSphere.position.x;
-      glowSphere.position.y = mainSphere.position.y;
-      
-      coreSphere.position.x = mainSphere.position.x;
-      coreSphere.position.y = mainSphere.position.y;
-      
-      // Subtle particle movement
-      particlesMesh.rotation.y += 0.0005;
-      
-      renderer.render(scene, camera);
-      window.requestAnimationFrame(animate);
+      animationFrameRef.current = window.requestAnimationFrame(animate);
     };
     
     animate();
     
     return () => {
+      // Clean up observer
+      if (sectionRef.current) {
+        observer.unobserve(sectionRef.current);
+      }
+      
+      // Cancel animation frame
+      if (animationFrameRef.current) {
+        window.cancelAnimationFrame(animationFrameRef.current);
+      }
+      
+      // Clean up event listeners
       window.removeEventListener('resize', handleResize);
       document.removeEventListener('mousemove', handleMouseMove);
+      
+      // Kill all GSAP animations
+      animations.forEach(anim => anim.kill());
       
       // Cleanup scene
       scene.traverse((object) => {
@@ -303,12 +378,36 @@ const HeroSection = () => {
         }
       });
       
-      renderer.dispose();
+      if (renderer) {
+        renderer.dispose();
+      }
     };
   }, [theme]); // Add theme as dependency to re-create scene when theme changes
   
+  // Effect to pause/resume animations based on visibility
+  useEffect(() => {
+    const renderer = rendererRef.current;
+    
+    if (isVisible) {
+      // Resume rendering
+      if (animationFrameRef.current === null && renderer) {
+        const animate = () => {
+          renderer.render(sceneRef.current, sceneRef.current.children.find(child => child instanceof THREE.Camera));
+          animationFrameRef.current = requestAnimationFrame(animate);
+        };
+        animate();
+      }
+    } else {
+      // Pause rendering
+      if (animationFrameRef.current !== null) {
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
+      }
+    }
+  }, [isVisible]);
+  
   return (
-    <section id="home" className="relative h-screen flex items-center overflow-hidden">
+    <section ref={sectionRef} id="home" className="relative h-screen flex items-center overflow-hidden">
       <canvas ref={canvasRef} className="absolute inset-0 z-0"></canvas>
       
       {/* Adjust gradient overlay based on theme */}

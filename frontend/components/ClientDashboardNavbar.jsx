@@ -2,14 +2,14 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useTheme } from '../context/ThemeContext';
 import { useNavigate, Link } from 'react-router-dom';
-import useDoctorAuthStore from '../store/doctorAuthStore';
+import useClientAuthStore from '../store/clientAuthStore';
 import '../pages/theme.css';
 
-const DoctorDashboardNavbar = () => {
+const ClientDashboardNavbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
-  const { logout, isLoading } = useDoctorAuthStore();
+  const { logout, isLoading } = useClientAuthStore();
   
   const handleLogout = async () => {
     const result = await logout();
@@ -31,25 +31,25 @@ const DoctorDashboardNavbar = () => {
                   transition={{ duration: 0.5 }}
                 >
                   <span className={`${theme === 'dark' ? 'text-blue-400' : 'text-primary'} text-2xl font-bold`}>
-                    MediConnect <span className="text-sm font-normal">Doctor Portal</span>
+                    MediConnect <span className="text-sm font-normal">Client Portal</span>
                   </span>
                 </motion.div>
               </div>
               <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
-                <Link to="/doctordashboard" className={`border-transparent ${theme === 'dark' ? 'text-white' : 'text-gray-900'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
+                <Link to="/clientdashboard" className={`border-transparent ${theme === 'dark' ? 'text-white' : 'text-gray-900'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
                   Dashboard
                 </Link>
-                <Link to="/doctorschedule" className={`border-transparent ${theme === 'dark' ? 'text-gray-300 hover:text-white' : 'text-gray-500 hover:text-gray-700'} hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
-                  My Schedule
+                <Link to="/bookappointment" className={`border-transparent ${theme === 'dark' ? 'text-gray-300 hover:text-white' : 'text-gray-500 hover:text-gray-700'} hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
+                  Book Appointment
                 </Link>
-                <Link to="/doctorappointments" className={`border-transparent ${theme === 'dark' ? 'text-gray-300 hover:text-white' : 'text-gray-500 hover:text-gray-700'} hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
-                  Appointments
+                <Link to="/clientappointments" className={`border-transparent ${theme === 'dark' ? 'text-gray-300 hover:text-white' : 'text-gray-500 hover:text-gray-700'} hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
+                  My Appointments
                 </Link>
                 <Link to="/chats" className={`border-transparent ${theme === 'dark' ? 'text-gray-300 hover:text-white' : 'text-gray-500 hover:text-gray-700'} hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
                   Messages
                 </Link>
-                <Link to="/doctordirectory" className={`border-transparent ${theme === 'dark' ? 'text-gray-300 hover:text-white' : 'text-gray-500 hover:text-gray-700'} hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
-                  Find Clients
+                <Link to="/finddoctors" className={`border-transparent ${theme === 'dark' ? 'text-gray-300 hover:text-white' : 'text-gray-500 hover:text-gray-700'} hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
+                  Find Doctors
                 </Link>
               </div>
             </div>
@@ -90,11 +90,11 @@ const DoctorDashboardNavbar = () => {
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  onClick={() => navigate('/doctorprofile')}
+                  onClick={() => navigate('/clientprofile')}
                   className={`flex items-center space-x-2 ${theme === 'dark' ? 'hover:bg-gray-700' : 'hover:bg-gray-100'} rounded-md p-2`}
                 >
-                  <div className="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center text-white">
-                    <span className="font-medium">DR</span>
+                  <div className="h-8 w-8 rounded-full bg-green-500 flex items-center justify-center text-white">
+                    <span className="font-medium">CL</span>
                   </div>
                   <span className="hidden md:inline-block">My Profile</span>
                 </motion.button>
@@ -137,22 +137,22 @@ const DoctorDashboardNavbar = () => {
         {isOpen && (
           <div className={`sm:hidden ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'}`}>
             <div className="pt-2 pb-3 space-y-1">
-              <Link to="/doctordashboard" className={`${theme === 'dark' ? 'bg-gray-900 border-blue-500 text-white' : 'bg-primary-light border-primary text-primary-dark'} block pl-3 pr-4 py-2 border-l-4 text-base font-medium`}>
+              <Link to="/clientdashboard" className={`${theme === 'dark' ? 'bg-gray-900 border-blue-500 text-white' : 'bg-primary-light border-primary text-primary-dark'} block pl-3 pr-4 py-2 border-l-4 text-base font-medium`}>
                 Dashboard
               </Link>
-              <Link to="/doctorschedule" className={`border-transparent ${theme === 'dark' ? 'text-gray-300 hover:bg-gray-700 hover:border-gray-500 hover:text-white' : 'text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'} block pl-3 pr-4 py-2 border-l-4 text-base font-medium`}>
-                My Schedule
+              <Link to="/bookappointment" className={`border-transparent ${theme === 'dark' ? 'text-gray-300 hover:bg-gray-700 hover:border-gray-500 hover:text-white' : 'text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'} block pl-3 pr-4 py-2 border-l-4 text-base font-medium`}>
+                Book Appointment
               </Link>
-              <Link to="/doctorappointments" className={`border-transparent ${theme === 'dark' ? 'text-gray-300 hover:bg-gray-700 hover:border-gray-500 hover:text-white' : 'text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'} block pl-3 pr-4 py-2 border-l-4 text-base font-medium`}>
-                Appointments
+              <Link to="/clientappointments" className={`border-transparent ${theme === 'dark' ? 'text-gray-300 hover:bg-gray-700 hover:border-gray-500 hover:text-white' : 'text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'} block pl-3 pr-4 py-2 border-l-4 text-base font-medium`}>
+                My Appointments
               </Link>
-              <Link to="/doctormessages" className={`border-transparent ${theme === 'dark' ? 'text-gray-300 hover:bg-gray-700 hover:border-gray-500 hover:text-white' : 'text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'} block pl-3 pr-4 py-2 border-l-4 text-base font-medium`}>
+              <Link to="/clientmessages" className={`border-transparent ${theme === 'dark' ? 'text-gray-300 hover:bg-gray-700 hover:border-gray-500 hover:text-white' : 'text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'} block pl-3 pr-4 py-2 border-l-4 text-base font-medium`}>
                 Messages
               </Link>
-              <Link to="/doctordirectory" className={`border-transparent ${theme === 'dark' ? 'text-gray-300 hover:bg-gray-700 hover:border-gray-500 hover:text-white' : 'text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'} block pl-3 pr-4 py-2 border-l-4 text-base font-medium`}>
-                Find Clients
+              <Link to="/finddoctors" className={`border-transparent ${theme === 'dark' ? 'text-gray-300 hover:bg-gray-700 hover:border-gray-500 hover:text-white' : 'text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'} block pl-3 pr-4 py-2 border-l-4 text-base font-medium`}>
+                Find Doctors
               </Link>
-              <Link to="/doctorprofile" className={`border-transparent ${theme === 'dark' ? 'text-gray-300 hover:bg-gray-700 hover:border-gray-500 hover:text-white' : 'text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'} block pl-3 pr-4 py-2 border-l-4 text-base font-medium`}>
+              <Link to="/clientprofile" className={`border-transparent ${theme === 'dark' ? 'text-gray-300 hover:bg-gray-700 hover:border-gray-500 hover:text-white' : 'text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'} block pl-3 pr-4 py-2 border-l-4 text-base font-medium`}>
                 My Profile
               </Link>
               {/* Logout option for mobile */}
@@ -181,4 +181,4 @@ const DoctorDashboardNavbar = () => {
   );
 };
 
-export default DoctorDashboardNavbar;
+export default ClientDashboardNavbar;

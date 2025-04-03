@@ -7,7 +7,6 @@ import http from "http";
 import axios from "axios";  // Import axios for API calls
 import nodemailer from "nodemailer";
 import connectDB from "./src/config/db.js";
-
 const app = express();
 const server = http.createServer(app); 
 
@@ -151,11 +150,13 @@ const transporter = nodemailer.createTransport({
 import doctorRouter from './src/routes/doctor.routes.js';
 import clientRouter from './src/routes/client.routes.js';
 import paymentRouter from './src/routes/payment.routes.js';
-
+import chatrouter from './src/routes/chats.routes.js'
 // Use Routes
 app.use("/doctor", doctorRouter);
 app.use('/client', clientRouter);
 app.use('/payments', paymentRouter);
+app.use('/chat', chatrouter);
+
 
 // Database Connection & Server Start
 const PORT = process.env.PORT || 5000;

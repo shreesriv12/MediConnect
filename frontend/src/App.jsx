@@ -11,13 +11,9 @@ import DoctorProfile from '../components/DoctorProfile';
 import DoctorAppointments from '../components/doctorAppointments';
 import DoctorSchedule from '../components/DoctorSchedules';
 import DoctorDirectory from '../components/Doctordirectory';
-import ChatBot from '../components/ChatBot';
+import ChatPage from '../pages/ChatPage';
+
 function App() {
-  const { getCurrentDoctor } = useDoctorAuthStore();
-  
-  useEffect(() => {
-    getCurrentDoctor();
-  }, [getCurrentDoctor]);
   
   return (
     <ThemeProvider>
@@ -33,7 +29,8 @@ function App() {
             <Route path='/doctorappointments' element={<DoctorAppointments/>}/>
             <Route path='/doctorschedule' element={<DoctorSchedule/>}/>
             <Route path='/doctordirectory' element={<DoctorDirectory/>}/>
-            <Route path='/chatbot' element={<ChatBot/>}/>
+            <Route path='/chats' element={<ChatPage/>}/>
+
           </Routes>
         </div>
       </Router>

@@ -23,7 +23,7 @@ const DoctorAppointments = () => {
     try {
       setLoading(true);
       const statusParam = filter !== 'all' ? `?status=${filter}` : '';
-      const response = await axios.get(`${API_URL}/doctors/appointments${statusParam}`, {
+      const response = await axios.get(`${API_URL}/doctor/appointments${statusParam}`, {
         withCredentials: true
       });
       setAppointments(response.data.data.appointments);
