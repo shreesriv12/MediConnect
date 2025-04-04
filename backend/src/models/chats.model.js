@@ -1,31 +1,32 @@
 import mongoose from 'mongoose';
 
-const chatSchema = new mongoose.Schema({
+// Create Chat Message Schema & Model
+const chatMessageSchema = new mongoose.Schema({
   senderId: {
     type: mongoose.Schema.Types.ObjectId,
-    refPath: 'senderModel',
-    required: true
+    required: true,
+    refPath: 'senderType'
+  },
+  senderType: {
+    type: String,
+    required: true,
+    enum: ['Client', 'Doctor']
   },
   receiverId: {
     type: mongoose.Schema.Types.ObjectId,
-    refPath: 'receiverModel',
-    required: true
+    required: true,
+    refPath: 'receiverType'
   },
-  senderModel: {
+  receiverType: {
     type: String,
     required: true,
-    enum: ['Doctor', 'Client']
-  },
-  receiverModel: {
-    type: String,
-    required: true,
-    enum: ['Doctor', 'Client']
+    enum: ['Client', 'Doctor']
   },
   message: {
     type: String,
     required: true
   },
-  seen: {
+  read: {
     type: Boolean,
     default: false
   },
@@ -35,5 +36,36 @@ const chatSchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 
-const Chat = mongoose.model('Chat', chatSchema);
-export default Chat;
+// Create Chat Session Schema & Model
+const chatSessionSchema = new mongoose.Schema({
+  clientId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Client',
+    required: true
+  },
+  doctorId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Doctor',
+    required: true
+  },
+  status: {
+    type: String,
+    enum: ['requested', 'active', 'ended', 'rejected'],
+    default: 'requested'
+  },
+  startTime: {
+    type: Date
+  },
+  endTime: {
+    type: Date
+  },
+  lastActivity: {
+    type: Date,
+    default: Date.now
+  }
+}, { timestamps: true });
+
+const ChatMessage = mongoose.model('ChatMessage', chatMessageSchema);
+const ChatSession = mongoose.model('ChatSession', chatSessionSchema);
+
+export { ChatMessage, ChatSession };

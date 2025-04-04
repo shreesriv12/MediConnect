@@ -21,13 +21,30 @@ const useDoctorAuthStore = create((set, get) => ({
   register: async (formData) => {
     set({ isSigningUp: true, error: null });
     try {
-      const response = await axiosInstance.post(`${API_URL}/doctor/register`, formData);
+      // Use withCredentials to ensure cookies are sent/received
+      const response = await axiosInstance.post(`${API_URL}/doctor/register`, formData, {
+        withCredentials: true
+      });
+      
+      const doctorData = response.data.data;
+      
+      // Store doctor ID in localStorage for UI persistence
+      localStorage.setItem("doctorId", doctorData._id);
+      
       set({ 
         isSigningUp: false, 
-        doctor: response.data.data 
+        doctor: doctorData,
+        isAuthenticated: true
       });
+      
       toast.success("Account created successfully! Please verify your OTP.");
-      return { success: true, doctorId: response.data.data._id };
+      
+      // Connect socket after registration if doctor is already verified
+      if (doctorData.verified) {
+        get().connectSocket();
+      }
+      
+      return { success: true, doctorId: doctorData._id };
     } catch (error) {
       const errorMessage = error.response?.data?.message || "Registration failed";
       set({ 
@@ -42,8 +59,22 @@ const useDoctorAuthStore = create((set, get) => ({
   verifyOtp: async (doctorId, otp) => {
     set({ isLoading: true, error: null });
     try {
-      const response = await axiosInstance.post(`${API_URL}/doctor/verify-otp`, { doctorId, otp });
-      set({ isLoading: false });
+      // Use withCredentials to ensure cookies are sent/received
+      const response = await axiosInstance.post(
+        `${API_URL}/doctor/verify-otp`, 
+        { doctorId, otp },
+        { withCredentials: true }
+      );
+      
+      // After OTP verification, tokens are set as HTTP-only cookies by the backend
+      set({ 
+        isLoading: false,
+        isAuthenticated: true 
+      });
+      
+      // Connect socket after verification
+      get().connectSocket();
+      
       toast.success("OTP verified successfully!");
       return { success: true };
     } catch (error) {
@@ -60,7 +91,13 @@ const useDoctorAuthStore = create((set, get) => ({
   verifyEmail: async (email, otp) => {
     set({ isLoading: true, error: null });
     try {
-      const response = await axiosInstance.post(`${API_URL}/doctor/verify-email`, { email, otp });
+      // Use withCredentials to ensure cookies are sent/received
+      const response = await axiosInstance.post(
+        `${API_URL}/doctor/verify-email`, 
+        { email, otp },
+        { withCredentials: true }
+      );
+      
       set({ isLoading: false });
       toast.success("Email verified successfully!");
       return { success: true, message: response.data.data.message };
@@ -78,14 +115,24 @@ const useDoctorAuthStore = create((set, get) => ({
   login: async (credentials) => {
     set({ isLoggingIn: true, error: null });
     try {
-      const response = await axiosInstance.post(`${API_URL}/doctor/login`, credentials, {
-        withCredentials: true,
+      // Always use withCredentials to ensure cookies are sent/received
+      const response = await axiosInstance.post(
+        `${API_URL}/doctor/login`, 
+        credentials, 
+        { withCredentials: true }
+      );
+  
+      const { doctor } = response.data.data;
+      
+      // Store minimal doctor info in localStorage
+      localStorage.setItem("doctorId", doctor._id);
+  
+      set({
+        isLoggingIn: false,
+        doctor: doctor,
+        isAuthenticated: true,
       });
-      set({ 
-        isLoggingIn: false, 
-        doctor: response.data.data.doctor,
-        isAuthenticated: true 
-      });
+  
       toast.success("Logged in successfully!");
       get().connectSocket();
       return { success: true };
@@ -104,23 +151,39 @@ const useDoctorAuthStore = create((set, get) => ({
   logout: async () => {
     set({ isLoading: true, error: null });
     try {
-      await axiosInstance.post(`${API_URL}/doctor/logout`, {}, { withCredentials: true });
+      // Use withCredentials to ensure cookies are sent/received
+      await axiosInstance.post(
+        `${API_URL}/doctor/logout`, 
+        {}, 
+        { withCredentials: true }
+      );
+      
+      // Remove any doctor data from localStorage
+      localStorage.removeItem("doctorId");
+      
       set({ 
         isLoading: false, 
         doctor: null,
         isAuthenticated: false 
       });
-      toast.success("Logged out successfully!");
+      
       get().disconnectSocket();
+      toast.success("Logged out successfully!");
       return { success: true };
     } catch (error) {
       const errorMessage = error.response?.data?.message || "Logout failed";
+      
+      // Even if logout API fails, clear local state
+      localStorage.removeItem("doctorId");
+      
       set({ 
         isLoading: false, 
         error: errorMessage,
         doctor: null,
         isAuthenticated: false
       });
+      
+      get().disconnectSocket();
       toast.error(errorMessage);
       return { success: false };
     }
@@ -129,19 +192,30 @@ const useDoctorAuthStore = create((set, get) => ({
   checkAuth: async () => {
     set({ isCheckingAuth: true });
     try {
-      const response = await axiosInstance.get(`${API_URL}/doctor/me`, { withCredentials: true });
+      // Use withCredentials to ensure cookies are sent/received
+      const response = await axiosInstance.get(
+        `${API_URL}/doctor/me`, 
+        { withCredentials: true }
+      );
+      
       set({ 
         doctor: response.data.data,
         isAuthenticated: true
       });
+      
       get().connectSocket();
       return { success: true };
     } catch (error) {
       console.log("Error in checkAuth:", error);
+      
+      // Clear any stored doctor data if authentication check fails
+      localStorage.removeItem("doctorId");
+      
       set({ 
         doctor: null,
         isAuthenticated: false
       });
+      
       return { success: false };
     } finally {
       set({ isCheckingAuth: false });
@@ -151,9 +225,13 @@ const useDoctorAuthStore = create((set, get) => ({
   updateProfile: async (formData) => {
     set({ isUpdatingProfile: true, error: null });
     try {
-      const response = await axiosInstance.patch(`${API_URL}/doctor/update`, formData, {
-        withCredentials: true,
-      });
+      // Use withCredentials to ensure cookies are sent/received
+      const response = await axiosInstance.patch(
+        `${API_URL}/doctor/update`, 
+        formData, 
+        { withCredentials: true }
+      );
+      
       set({ isUpdatingProfile: false, doctor: response.data.data });
       toast.success("Profile updated successfully!");
       return { success: true };
@@ -168,46 +246,43 @@ const useDoctorAuthStore = create((set, get) => ({
   connectSocket: () => {
     const { doctor, socket } = get();
     if (!doctor || socket?.connected) return;
-    
+  
     const newSocket = io(API_URL, {
-      query: { doctorId: doctor._id },
+      transports: ["websocket", "polling"],
+      withCredentials: true,
     });
-    
-    // Connect to socket
-    newSocket.connect();
-    
-    // Set user as online
-    newSocket.emit('user_online', doctor._id);
-    
+  
+    // Handle successful connection
+    newSocket.on("connect", () => {
+      console.log("Socket connected:", newSocket.id);
+  
+      // Emit user_online only after connected
+      newSocket.emit("user_online", doctor._id);
+    });
+  
     // Store socket instance
     set({ socket: newSocket });
-    
-    // Set up event listeners
+  
+    // Event listeners
     newSocket.on("getOnlineUsers", (ids) => set({ onlineUsers: ids }));
-    
-    // Listen for online users updates
-    newSocket.on('update_online_users', (users) => {
-      set({ onlineUsers: users });
-    });
-    
-    // Handle notifications
-    newSocket.on('new_notification', (message) => {
+    newSocket.on("update_online_users", (users) => set({ onlineUsers: users }));
+    newSocket.on("new_notification", (message) => {
       toast.success(message);
     });
-    
-    // Handle connection errors
-    newSocket.on('connect_error', (err) => {
-      console.error('Socket connection error:', err);
-      toast.error('Connection issue. Will try again soon.');
+    newSocket.on("connect_error", (err) => {
+      console.error("Socket connection error:", err);
+      toast.error("Connection issue. Will try again soon.");
     });
-    
+  
     return () => {
       newSocket.off("getOnlineUsers");
       newSocket.off("update_online_users");
       newSocket.off("new_notification");
       newSocket.off("connect_error");
+      newSocket.off("connect");
     };
   },
+  
   
   disconnectSocket: () => {
     const { socket } = get();
@@ -217,13 +292,12 @@ const useDoctorAuthStore = create((set, get) => ({
     }
   },
   
-  // WebRTC call functions
-  initiateVideoCall: (clientId) => {
-    const { doctor, socket } = get();
-    if (!doctor || !socket) return null;
+  // WebRTC call functions remain the same
+  initiateVideoCall: (doctorId) => {
+    const { client, socket } = get();
+    if (!client || !socket) return null;
     
-    // Create a room ID (combination of both user IDs to ensure uniqueness)
-    const roomId = [doctor._id, clientId].sort().join('-');
+    const roomId = [client._id, doctorId].sort().join('-');
     socket.emit('join_room', roomId);
     
     return roomId;

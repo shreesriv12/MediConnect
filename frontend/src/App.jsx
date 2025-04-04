@@ -11,7 +11,7 @@ import DoctorProfile from '../components/DoctorProfile';
 import DoctorAppointments from '../components/doctorAppointments';
 import DoctorSchedule from '../components/DoctorSchedules';
 import DoctorDirectory from '../components/Doctordirectory';
-import ChatPage from '../pages/ChatPage';
+import ChatPage from '../components/ChatPage';
 
 function App() {
   
@@ -29,8 +29,7 @@ function App() {
             <Route path='/doctorappointments' element={<DoctorAppointments/>}/>
             <Route path='/doctorschedule' element={<DoctorSchedule/>}/>
             <Route path='/doctordirectory' element={<DoctorDirectory/>}/>
-            <Route path='/chats' element={<ChatPage/>}/>
-
+            <Route path="/chats" element={<ChatPage />} />
           </Routes>
         </div>
       </Router>

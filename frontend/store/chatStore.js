@@ -1,106 +1,271 @@
-import create from 'zustand';
-import axios from 'axios';
+import { create } from "zustand";
+import { axiosInstance } from "../utils/axois";
+import toast from "react-hot-toast";
 
-const BASE_URL = 'http://localhost:5000/api/chats'; // Update with your API URL
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
-const useChatStore = create((set) => ({
-  chats: [],              // Stores chat messages
-  contacts: [],           // Stores contact list
-  unreadCount: 0,         // Count of unread messages
-  loading: false,         // Loading state
-  error: null,            // Error state
-
-  // 📥 Fetch chat history (works for both doctor-client and client-doctor)
-  fetchChatHistory: async (otherUserId, otherUserModel) => {
-    set({ loading: true, error: null });
+const useChatStore = create((set, get) => ({
+  activeSessions: [],
+  doctorsList: [],
+  activeSession: null,
+  messages: [],
+  isLoading: false,
+  isLoadingDoctors: false,
+  isLoadingMessages: false,
+  error: null,
+  unreadCount: 0,
+  
+  // Clear any errors
+  clearError: () => set({ error: null }),
+  
+  // Fetch available doctors
+  fetchDoctors: async () => {
+    set({ isLoadingDoctors: true, error: null });
     try {
-      const response = await axios.get(`${BASE_URL}/history/${otherUserId}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      const response = await axiosInstance.get(`${API_URL}/client/doctors`, {
+        withCredentials: true
       });
-      set({ chats: response.data, loading: false });
+      
+      set({ 
+        doctorsList: response.data.data || [],
+        isLoadingDoctors: false
+      });
+      
+      return { success: true, doctors: response.data.data };
     } catch (error) {
-      set({ error: error.message, loading: false });
+      const errorMessage = error.response?.data?.message || "Failed to fetch doctors";
+      set({ 
+        isLoadingDoctors: false, 
+        error: errorMessage 
+      });
+      toast.error(errorMessage);
+      return { success: false, error: errorMessage };
     }
   },
-
-  // 💬 Send a new message (dynamic sender/receiver)
-  sendMessage: async (receiverId, message, receiverModel) => {
-    set({ loading: true });
+  
+  // Fetch active chat sessions
+  fetchActiveSessions: async () => {
+    set({ isLoading: true, error: null });
     try {
-      const senderModel = localStorage.getItem('role'); // 'Doctor' or 'Client'
-      const senderId = localStorage.getItem('userId');
-
-      const response = await axios.post(`${BASE_URL}/messages`, {
-        receiverId,
-        message,
-        senderModel,
-        receiverModel
-      }, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      const response = await axiosInstance.get(
+        `${API_URL}/chat/sessions?status=active,requested`, 
+        { withCredentials: true }
+      );
+      
+      set({ 
+        activeSessions: response.data || [],
+        isLoading: false 
       });
-
-      set((state) => ({
-        chats: [...state.chats, response.data],
-        loading: false
-      }));
+      
+      return { success: true };
     } catch (error) {
-      set({ error: error.message, loading: false });
+      const errorMessage = error.response?.data?.message || "Failed to fetch chat sessions";
+      set({ 
+        isLoading: false, 
+        error: errorMessage 
+      });
+      toast.error(errorMessage);
+      return { success: false, error: errorMessage };
     }
   },
-
-  // 📇 Fetch contacts (shows both doctor and client contacts)
-  fetchContacts: async () => {
-    set({ loading: true });
+  
+  // Get chat history for a specific session
+  fetchChatHistory: async (sessionId) => {
+    set({ isLoadingMessages: true, error: null });
     try {
-      const response = await axios.get(`${BASE_URL}/contacts`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      const response = await axiosInstance.get(
+        `${API_URL}/chat/sessions/${sessionId}/messages`, 
+        { withCredentials: true }
+      );
+      
+      set({ 
+        messages: response.data || [],
+        isLoadingMessages: false,
+        activeSession: sessionId
       });
-      set({ contacts: response.data, loading: false });
+      
+      return { success: true };
     } catch (error) {
-      set({ error: error.message, loading: false });
+      const errorMessage = error.response?.data?.message || "Failed to fetch chat messages";
+      set({ 
+        isLoadingMessages: false, 
+        error: errorMessage 
+      });
+      toast.error(errorMessage);
+      return { success: false, error: errorMessage };
     }
   },
-
-  // 👁️ Mark messages as seen
-  markMessagesAsSeen: async (senderId) => {
+  
+  // Get unread message count
+  fetchUnreadCount: async () => {
     try {
-      await axios.patch(`${BASE_URL}/seen/${senderId}`, {}, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-      });
-      set((state) => ({
-        chats: state.chats.map((chat) =>
-          chat.senderId === senderId ? { ...chat, seen: true } : chat
-        )
-      }));
+      const response = await axiosInstance.get(
+        `${API_URL}/chat/unread`,
+        { withCredentials: true }
+      );
+      
+      set({ unreadCount: response.data.unreadCount || 0 });
+      return { success: true };
     } catch (error) {
-      set({ error: error.message });
+      console.error("Failed to fetch unread count:", error);
+      return { success: false };
     }
   },
-
-  // 🔔 Get unread message count
-  getUnreadCount: async () => {
-    try {
-      const response = await axios.get(`${BASE_URL}/unread-count`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+  
+  // Socket event handlers
+  handleNewMessage: (message) => {
+    const { messages, activeSession } = get();
+    
+    // Only update messages if we're in the correct session
+    if (activeSession === message.sessionId) {
+      set({ messages: [...messages, message] });
+    }
+    
+    // Update unread count if the message is not from the current user
+    get().fetchUnreadCount();
+  },
+  
+  handleChatRequest: (request) => {
+    const { activeSessions } = get();
+    
+    // Add to active sessions if not already there
+    if (!activeSessions.find(session => session._id === request.sessionId)) {
+      set({ 
+        activeSessions: [
+          {
+            _id: request.sessionId,
+            status: 'requested',
+            user: request.client,
+            lastActivity: request.timestamp
+          },
+          ...activeSessions
+        ]
       });
-      set({ unreadCount: response.data.unreadCount });
-    } catch (error) {
-      set({ error: error.message });
+    }
+    
+    toast.success(`New chat request from ${request.client.name}`);
+  },
+  
+  handleChatResponse: (response) => {
+    const { activeSessions } = get();
+    
+    // Update session status
+    const updatedSessions = activeSessions.map(session => {
+      if (session._id === response.sessionId) {
+        return { ...session, status: response.status };
+      }
+      return session;
+    });
+    
+    set({ activeSessions: updatedSessions });
+    
+    if (response.status === 'active') {
+      toast.success(`Chat request accepted by ${response.doctorName}`);
+    } else if (response.status === 'rejected') {
+      toast.error(`Chat request rejected by ${response.doctorName}`);
     }
   },
-
-  // 🗑️ Delete a message
-  deleteMessage: async (messageId) => {
-    try {
-      await axios.delete(`${BASE_URL}/message/${messageId}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-      });
-      set((state) => ({
-        chats: state.chats.filter((chat) => chat._id !== messageId)
-      }));
-    } catch (error) {
-      set({ error: error.message });
+  
+  handleChatStarted: (data) => {
+    set({ activeSession: data.sessionId });
+    toast.success('Chat session started');
+  },
+  
+  handleChatEnded: (data) => {
+    const { activeSessions, activeSession } = get();
+    
+    // Update session status
+    const updatedSessions = activeSessions.map(session => {
+      if (session._id === data.sessionId) {
+        return { ...session, status: 'ended' };
+      }
+      return session;
+    });
+    
+    set({ activeSessions: updatedSessions });
+    
+    // Clear active session if it was ended
+    if (activeSession === data.sessionId) {
+      set({ activeSession: null });
     }
+    
+    toast.info('Chat session ended');
+  },
+  
+  // Socket actions - to be connected to socket events
+  requestChat: (socket, doctorId) => {
+    if (!socket) {
+      toast.error('Not connected to chat server');
+      return;
+    }
+    
+    socket.emit('request_chat', { doctorId });
+    toast.success('Chat request sent');
+  },
+  
+  respondToChat: (socket, sessionId, action) => {
+    if (!socket) {
+      toast.error('Not connected to chat server');
+      return;
+    }
+    
+    socket.emit('respond_to_chat_request', { sessionId, action });
+  },
+  
+  sendMessage: (socket, sessionId, message) => {
+    if (!socket || !sessionId) {
+      toast.error('Not connected to chat server');
+      return;
+    }
+    
+    socket.emit('send_message', { sessionId, message });
+  },
+  
+  endChat: (socket, sessionId) => {
+    if (!socket) {
+      toast.error('Not connected to chat server');
+      return;
+    }
+    
+    socket.emit('end_chat', { sessionId });
+  },
+  
+  // Request active sessions via socket
+  requestActiveSessions: (socket) => {
+    if (!socket) return;
+    
+    socket.emit('get_active_sessions');
+  },
+  
+  // Request chat history via socket
+  requestChatHistory: (socket, sessionId) => {
+    if (!socket) return;
+    
+    socket.emit('get_chat_history', { sessionId });
+    set({ activeSession: sessionId });
+  },
+  
+  // Handle socket.io response for active sessions
+  handleActiveSessions: (data) => {
+    set({ activeSessions: data.sessions || [] });
+  },
+  
+  // Handle socket.io response for chat history
+  handleChatHistory: (data) => {
+    set({ 
+      messages: data.messages || [],
+      activeSession: data.sessionId
+    });
+  },
+  
+  // Clean up when changing users
+  resetStore: () => {
+    set({
+      activeSessions: [],
+      activeSession: null,
+      messages: [],
+      unreadCount: 0
+    });
   }
 }));
 

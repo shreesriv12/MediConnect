@@ -155,10 +155,9 @@ import chatrouter from './src/routes/chats.routes.js'
 app.use("/doctor", doctorRouter);
 app.use('/client', clientRouter);
 app.use('/payments', paymentRouter);
-app.use('/chat', chatrouter);
+app.use('/api/chats', chatrouter);
 
 
-// Database Connection & Server Start
 const PORT = process.env.PORT || 5000;
 
 connectDB()

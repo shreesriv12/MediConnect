@@ -204,9 +204,13 @@ const verifyOtp = asyncHandler(async (req, res) => {
 });
 
 const getCurrentClient = asyncHandler(async (req, res) => {
-  return res
-    .status(200)
-    .json(new ApiResponse(200, req.client, "Current Client Data"));
+   // Find the client by ID and select only the fields you need
+   const client = await Client.findById(req.client._id)
+   .select("-password -refreshToken -otp -otpExpires -name -email -age -gender -avatar -__v");
+ 
+ return res
+   .status(200)
+   .json(new ApiResponse(200, client, "Current Client Data"));
 });
 
 // ===== APPOINTMENT RELATED CONTROLLERS ===== //
