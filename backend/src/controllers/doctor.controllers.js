@@ -7,7 +7,6 @@ import bcrypt from "bcryptjs";
 import nodemailer from "nodemailer";
 import { uploadToCloud } from "../utils/cloudinary.js";
 import { sendOtp } from "../utils/sendotp.js";
-import AppointmentSlot from "../models/appointmentSlot.model.js";
 const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
 
 const transporter = nodemailer.createTransport({
@@ -35,49 +34,57 @@ const generateAccessRefreshTokens = async (doctorId) => {
 };
 
 const registerDoctor = asyncHandler(async (req, res) => {
-  const { name, email, phone, password, specialization, experience, degree, age, gender } = req.body;
+  try {
+    const { name, email, phone, password, specialization, experience, degree, age, gender } = req.body;
 
-  if ([name, email, phone, password, specialization, experience, degree, age, gender].some((field) => !field?.trim())) {
-    throw new ApiError(400, "All fields are required");
+    if ([name, email, phone, password, specialization, experience, degree, age, gender].some((field) => !field?.trim())) {
+      throw new ApiError(400, "All fields are required");
+    }
+
+    const existingDoctor = await Doctor.findOne({ $or: [{ email }, { phone }] });
+    if (existingDoctor) throw new ApiError(400, "Email or phone number already exists");
+
+    if (!req.file) {
+      throw new ApiError(400, "Avatar file is required");
+    }
+
+    const avatar = await uploadToCloud(req.file.path);
+    if (!avatar) throw new ApiError(500, "Avatar upload failed");
+
+    const otp = generateOTP();
+    const otpExpires = new Date(Date.now() + 5 * 60 * 1000);
+
+    const emailSent = await transporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: "Your OTP for Email Verification",
+      html: `<p>Your OTP is: <strong>${otp}</strong></p><p>This OTP is valid for 5 minutes.</p>`,
+    });
+    if (!emailSent) throw new ApiError(500, "Failed to send email OTP");
+
+    const doctor = await Doctor.create({
+      name,
+      email,
+      phone,
+      password,
+      specialization,
+      experience,
+      degree,
+      age,
+      gender,
+      avatar: avatar.url,
+      verified: false,
+      otp,
+      otpExpires,
+    });
+
+    const userFromDB = await Doctor.findById(doctor._id).select("-password -refreshToken");
+
+    return res.status(201).json(new ApiResponse(200, userFromDB, "Doctor Registered Successfully! Please verify your email."));
+  } catch (error) {
+    // You can log here if needed
+    return res.status(error.statusCode || 500).json({ message: error.message });
   }
-
-  const existingDoctor = await Doctor.findOne({ $or: [{ email }, { phone }] });
-  if (existingDoctor) throw new ApiError(400, "Email or phone number already exists");
-  
-  if (!req.file?.path) throw new ApiError(400, "Avatar file is required");
-  const avatar = await uploadToCloud(req.file.path);
-  if (!avatar) throw new ApiError(500, "Avatar upload failed");
-
-  const otp = generateOTP();
-  const otpExpires = new Date(Date.now() + 5 * 60 * 1000);
-
-  const emailSent = await transporter.sendMail({
-    from: process.env.EMAIL_USER,
-    to: email,
-    subject: "Your OTP for Email Verification",
-    html: `<p>Your OTP is: <strong>${otp}</strong></p><p>This OTP is valid for 5 minutes.</p>`,
-  });
-  if (!emailSent) throw new ApiError(500, "Failed to send email OTP");
-
-  const doctor = await Doctor.create({
-    name,
-    email,
-    phone,
-    password,
-    specialization,
-    experience,
-    degree,
-    age,
-    gender,
-    avatar: avatar.url,
-    verified: false,
-    otp,
-    otpExpires,
-  });
-
-  const userFromDB = await Doctor.findById(doctor._id).select("-password -refreshToken");
-
-  return res.status(201).json(new ApiResponse(200, userFromDB, "Doctor Registered Successfully! Please verify your email."));
 });
 
 const verifyEmail = asyncHandler(async (req, res) => {
@@ -281,110 +288,6 @@ const verifyOtp = asyncHandler(async (req, res) => {
 });
 
 
-// Create Appointment Slot
-const createAppointmentSlot = asyncHandler(async (req, res) => {
-  const { date, startTime, endTime, duration, fee } = req.body;
-  
-  // Create appointment slot
-  const slot = await AppointmentSlot.create({
-    doctorId: req.doctor._id,
-    date: new Date(date),
-    startTime: new Date(startTime),
-    endTime: new Date(endTime),
-    duration: duration || 30, // default 30 minutes
-    fee: fee || req.doctor.fee // use doctor's default fee if not provided
-  });
-  
-  return res
-    .status(201)
-    .json(new ApiResponse(201, slot, "Appointment slot created successfully"));
-});
-
-// Get Doctor's Appointment Slots
-const getDoctorSlots = asyncHandler(async (req, res) => {
-  const slots = await AppointmentSlot.find({ doctorId: req.doctor._id });
-  
-  return res
-    .status(200)
-    .json(new ApiResponse(200, { count: slots.length, slots }, "Doctor slots retrieved successfully"));
-});
-
-// Update Appointment Slot
-const updateAppointmentSlot = asyncHandler(async (req, res) => {
-  const { date, startTime, endTime, duration, fee } = req.body;
-  
-  const slot = await AppointmentSlot.findOneAndUpdate(
-    { _id: req.params.id, doctorId: req.doctor._id, isBooked: false },
-    { date: new Date(date), startTime: new Date(startTime), endTime: new Date(endTime), duration, fee },
-    { new: true, runValidators: true }
-  );
-  
-  if (!slot) {
-    throw new ApiError(404, "Slot not found or cannot be updated because it is already booked");
-  }
-  
-  return res
-    .status(200)
-    .json(new ApiResponse(200, slot, "Appointment slot updated successfully"));
-});
-
-// Delete Appointment Slot
-const deleteAppointmentSlot = asyncHandler(async (req, res) => {
-  const slot = await AppointmentSlot.findOneAndDelete({
-    _id: req.params.id,
-    doctorId: req.doctor._id,
-    isBooked: false
-  });
-  
-  if (!slot) {
-    throw new ApiError(404, "Slot not found or cannot be deleted because it is already booked");
-  }
-  
-  return res
-    .status(200)
-    .json(new ApiResponse(200, {}, "Appointment slot deleted successfully"));
-});
-
-// Get Doctor's Appointments
-const getDoctorAppointments = asyncHandler(async (req, res) => {
-  const { status } = req.query;
-  
-  const query = { doctorId: req.doctor._id };
-  if (status) {
-    query.status = status;
-  }
-  
-  const appointments = await Appointment.find(query)
-    .populate('clientId', 'name email phone')
-    .populate('slotId');
-  
-  return res
-    .status(200)
-    .json(new ApiResponse(200, { count: appointments.length, appointments }, "Doctor appointments retrieved successfully"));
-});
-
-// Update Appointment Status
-const updateAppointmentStatus = asyncHandler(async (req, res) => {
-  const { status } = req.body;
-  
-  if (!['confirmed', 'cancelled', 'completed'].includes(status)) {
-    throw new ApiError(400, "Invalid status");
-  }
-  
-  const appointment = await Appointment.findOneAndUpdate(
-    { _id: req.params.id, doctorId: req.doctor._id },
-    { status },
-    { new: true, runValidators: true }
-  );
-  
-  if (!appointment) {
-    throw new ApiError(404, "Appointment not found");
-  }
-  
-  return res
-    .status(200)
-    .json(new ApiResponse(200, appointment, "Appointment status updated successfully"));
-});
 
 export { 
   registerDoctor, 
@@ -395,11 +298,4 @@ export {
   refreshAccessToken,
   getCurrentDoctor,
   updateDoctor,
-  // New exported functions for appointment management
-  createAppointmentSlot,
-  getDoctorSlots,
-  updateAppointmentSlot,
-  deleteAppointmentSlot,
-  getDoctorAppointments,
-  updateAppointmentStatus
 };

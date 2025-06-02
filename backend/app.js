@@ -2,56 +2,53 @@ import express from "express";
 import "dotenv/config";  // Load environment variables
 import cookieParser from "cookie-parser";
 import cors from "cors";
-import initializeSocket from "./src/utils/socket.js"; 
 import http from "http";   
-import axios from "axios";  // Import axios for API calls
+import axios from "axios";  // For Hugging Face
 import nodemailer from "nodemailer";
 import connectDB from "./src/config/db.js";
+import { Server } from "socket.io";
+import { initializeSocket } from "./src/utils/socketHandlers.js";
+import { initiateCall } from "./src/controllers/video.controller.js";
+// Express and HTTP server setup
 const app = express();
-const server = http.createServer(app); 
+const server = http.createServer(app);
 
-// Middleware
-app.use(express.json({ limit: "16kb" }));
-app.use(express.urlencoded({ extended: true, limit: "16kb" }));
-app.use(express.static("public"));
+// === Middleware Setup ===
+
+// Parse cookies early
 app.use(cookieParser());
+
+// Serve static files (e.g. uploaded avatars)
+app.use(express.static("public"));
+
+// Enable CORS
 app.use(cors({
   origin: "http://localhost:5173",
   credentials: true,
 }));
 
+// These must come BEFORE routes
+app.use(express.json({ limit: "16kb" }));
+app.use(express.urlencoded({ extended: true, limit: "16kb" }));
 
+// === Hugging Face Chat Endpoint ===
 const HUGGING_FACE_TOKEN = process.env.HUGGING_FACE_TOKEN;
-// Changed to a conversational model that accepts plain text input
 const MODEL_URL = 'https://api-inference.huggingface.co/models/facebook/blenderbot-400M-distill';
-
-// Simple memory-based chat history
 const chatHistory = {};
 
-// Route to handle chat messages
 app.post('/chat', async (req, res) => {
   try {
     const { userId, message } = req.body;
-    
     if (!userId || !message) {
       return res.status(400).json({ error: 'Missing userId or message' });
     }
-    
-    // Initialize history for new users
-    if (!chatHistory[userId]) {
-      chatHistory[userId] = [];
-    }
-    
-    // Add user message to history
+
+    if (!chatHistory[userId]) chatHistory[userId] = [];
     chatHistory[userId].push({ role: 'user', content: message });
-    
-    // Get response from Hugging Face
+
     const botResponse = await getHuggingFaceResponse(message);
-    
-    // Add bot response to history
     chatHistory[userId].push({ role: 'assistant', content: botResponse });
-    
-    // Send response back to client
+
     res.json({ response: botResponse });
   } catch (error) {
     console.error('Chat error:', error);
@@ -59,15 +56,10 @@ app.post('/chat', async (req, res) => {
   }
 });
 
-// Fixed function to get response from Hugging Face
 async function getHuggingFaceResponse(message) {
   try {
-    if (!HUGGING_FACE_TOKEN) {
-      console.warn('No Hugging Face token provided, using fallback responses');
-      return getSimpleResponse(message);
-    }
+    if (!HUGGING_FACE_TOKEN) return getSimpleResponse(message);
     
-    // FIXED: Sending the payload in the correct format for the model
     const response = await axios({
       method: 'post',
       url: MODEL_URL,
@@ -75,69 +67,34 @@ async function getHuggingFaceResponse(message) {
         'Authorization': `Bearer ${HUGGING_FACE_TOKEN}`,
         'Content-Type': 'application/json'
       },
-      data: { 
-        // Just send the raw text input - different models expect different inputs
-        inputs: message
-      },
+      data: { inputs: message },
       timeout: 10000
     });
-    
-    // Handle the response based on the model's output format
-    if (response.data && typeof response.data === 'object') {
-      // For models that return generated_text directly
-      if (response.data.generated_text) {
-        return response.data.generated_text;
-      }
-      // For models that return an array of responses
-      else if (Array.isArray(response.data) && response.data[0]) {
-        if (response.data[0].generated_text) {
-          return response.data[0].generated_text;
-        }
-        // Some models return this format
-        else if (response.data[0].text) {
-          return response.data[0].text;
-        }
-      }
-      // For conversation models like BlenderBot
-      else if (response.data.conversation && response.data.conversation.generated_responses) {
-        const responses = response.data.conversation.generated_responses;
-        return responses[responses.length - 1];
-      }
+
+    if (response.data?.generated_text) return response.data.generated_text;
+    if (Array.isArray(response.data) && response.data[0]?.generated_text) return response.data[0].generated_text;
+    if (Array.isArray(response.data) && response.data[0]?.text) return response.data[0].text;
+    if (response.data?.conversation?.generated_responses) {
+      const responses = response.data.conversation.generated_responses;
+      return responses[responses.length - 1];
     }
-    
-    // If response format is unexpected, log it and use fallback
-    console.warn('Unexpected response format:', response.data);
+
     return getSimpleResponse(message);
-    
   } catch (error) {
     console.error('Hugging Face API error:', error.message);
-    // If response contains error details, log them
-    if (error.response && error.response.data) {
-      console.error('API response data:', error.response.data);
-    }
     return getSimpleResponse(message);
   }
 }
 
-// Simple rule-based fallback responses
 function getSimpleResponse(message) {
-  const lowercaseMessage = message.toLowerCase();
-  
-  if (lowercaseMessage.includes('hello') || lowercaseMessage.includes('hi')) {
-    return 'Hello there! How can I help you today?';
-  } else if (lowercaseMessage.includes('help')) {
-    return 'I\'m here to help! What do you need assistance with?';
-  } else if (lowercaseMessage.includes('bye') || lowercaseMessage.includes('goodbye')) {
-    return 'Goodbye! Have a great day!';
-  } else {
-    return 'I\'m not sure I understand. Could you please rephrase that?';
-  }
+  const msg = message.toLowerCase();
+  if (msg.includes('hello') || msg.includes('hi')) return 'Hello there! How can I help you today?';
+  if (msg.includes('help')) return 'I\'m here to help! What do you need assistance with?';
+  if (msg.includes('bye')) return 'Goodbye! Have a great day!';
+  return 'I\'m not sure I understand. Could you please rephrase that?';
 }
 
-// Initialize WebSockets
-const io = initializeSocket(server);
-
-// Nodemailer Config
+// === Nodemailer Config ===
 const transporter = nodemailer.createTransport({
   service: "Gmail",
   auth: {
@@ -146,18 +103,71 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-// Import Routes
+
+// Socket.IO setup
+const io = new Server(server, {
+  cors: {
+    origin: process.env.CORS_ORIGIN || `http://localhost:${PORT}`,
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"]
+  },
+  transports: ['websocket', 'polling']
+});
+
+// Initialize socket handlers
+initializeSocket(io);
+
+// Make io available in request object
+app.use((req, res, next) => {
+  req.io = io;
+  next();
+});
+
+
+
+// === Route Imports ===
 import doctorRouter from './src/routes/doctor.routes.js';
 import clientRouter from './src/routes/client.routes.js';
-import paymentRouter from './src/routes/payment.routes.js';
-import chatrouter from './src/routes/chats.routes.js'
-// Use Routes
+import scheduleRouter from './src/routes/schedule.routes.js';
+import chatRouter from './src/routes/chat.routes.js';
+import videoCallRouter from './src/routes/video.routes.js'; 
+
+
+
+// === Route Usage ===
 app.use("/doctor", doctorRouter);
-app.use('/client', clientRouter);
-app.use('/payments', paymentRouter);
-app.use('/api/chats', chatrouter);
+app.use("/client", clientRouter);
+app.use("/schedule", scheduleRouter);
+app.use("/chats", chatRouter);
+app.use("/video-calls", videoCallRouter);
 
 
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    status: 'OK',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  });
+});
+
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  const statusCode = err.statusCode || 500;
+  const message = err.message || "Internal Server Error";
+  
+  res.status(statusCode).json({
+    success: false,
+    statusCode,
+    message,
+    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+  });
+});
+
+
+
+// === Start Server ===
 const PORT = process.env.PORT || 5000;
 
 connectDB()
