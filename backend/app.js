@@ -132,7 +132,7 @@ import clientRouter from './src/routes/client.routes.js';
 import scheduleRouter from './src/routes/schedule.routes.js';
 import chatRouter from './src/routes/chat.routes.js';
 import videoCallRouter from './src/routes/video.routes.js'; 
-
+import medicineRoutes from './src/routes/medicine.routes.js';
 
 
 // === Route Usage ===
@@ -142,6 +142,9 @@ app.use("/schedule", scheduleRouter);
 app.use("/chats", chatRouter);
 app.use("/video-call", videoCallRouter);
 app.use("/clinics", clinicRoutes); 
+app.use("/medicines", medicineRoutes);
+
+
 
 // Health check endpoint
 app.get('/health', (req, res) => {
