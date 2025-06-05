@@ -57,6 +57,10 @@ const ClientDashboardNavbar = () => {
               <Link to="/video-call" className={`border-transparent ${theme === 'dark' ? 'text-gray-300 hover:text-white' : 'text-gray-500 hover:text-gray-700'} hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
                 Video Call
               </Link>
+                 <Link to="/medicines-search" className={`border-transparent ${theme === 'dark' ? 'text-gray-300 hover:text-white' : 'text-gray-500 hover:text-gray-700'} hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
+                Search Medicine
+              </Link>
+
               </div>
             </div>
             <div className="flex items-center space-x-4">

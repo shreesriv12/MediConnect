@@ -14,6 +14,7 @@ import ChatPage from '../pages/ChatPage';
 import ClientProfile from '../components/ClientProfile';
 import VideoCallPage from '../pages/VideoPage';
 import NearbyClinicsMap from '../components/NearbyClinicMap';
+import MedicineSearch from '../pages/MedicineSearch';
 function App() {
   
   return (
@@ -33,6 +34,7 @@ function App() {
             <Route path="/clientprofile" element={<ClientProfile />} />
             <Route path="/video-call" element={<VideoCallPage />} />
             <Route path="/nearby-clinics" element={<NearbyClinicsMap />} />
+            <Route path="/medicines-search" element={<MedicineSearch />} />
             {/* Redirect to home if no route matches */}
           </Routes>
         </div>
