@@ -211,95 +211,89 @@ const VideoCallPage = () => {
     };
   }, [currentUser, userType]);
 
-  // Enhanced media initialization
-  const initializeMedia = async () => {
-    console.log('[Media] Initializing media stream...');
+const initializeMedia = async () => {
+  console.log('[Media] Initializing media stream...');
 
-    if (localStreamRef.current && localStreamRef.current.active) {
-      console.log('[Media] Using existing active stream');
+  if (localStreamRef.current && localStreamRef.current.active) {
+    console.log('[Media] Using existing active stream');
+    
+    if (localVideoRef.current && localVideoRef.current.srcObject !== localStreamRef.current) {
+      localVideoRef.current.srcObject = localStreamRef.current;
+      // FIXED: Wait for video to be ready
+      await new Promise(resolve => {
+        localVideoRef.current.onloadedmetadata = resolve;
+        setTimeout(resolve, 1000); // Fallback timeout
+      });
+    }
+    return localStreamRef.current;
+  }
+
+  try {
+    if (localStreamRef.current) {
+      console.log('[Media] Stopping existing inactive stream...');
+      localStreamRef.current.getTracks().forEach(track => {
+        track.stop();
+        console.log(`[Media] Stopped ${track.kind} track`);
+      });
+      localStreamRef.current = null;
+    }
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      throw new Error('Media devices not supported by this browser');
+    }
+
+    console.log('[Media] Requesting new media stream...');
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        width: { ideal: 1280, min: 640, max: 1920 },
+        height: { ideal: 720, min: 480, max: 1080 },
+        frameRate: { ideal: 30, min: 15, max: 60 },
+        facingMode: 'user'
+      },
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+        sampleRate: { ideal: 44100 }
+      }
+    });
+
+    console.log('[Media] New media stream obtained:', {
+      id: stream.id,
+      videoTracks: stream.getVideoTracks().length,
+      audioTracks: stream.getAudioTracks().length,
+      active: stream.active
+    });
+
+    localStreamRef.current = stream;
+
+    if (localVideoRef.current) {
+      localVideoRef.current.srcObject = stream;
+      console.log('[Media] Stream attached to local video element');
       
-      if (localVideoRef.current && localVideoRef.current.srcObject !== localStreamRef.current) {
-        localVideoRef.current.srcObject = localStreamRef.current;
-      }
-      return localStreamRef.current;
-    }
-
-    try {
-      if (localStreamRef.current) {
-        console.log('[Media] Stopping existing inactive stream...');
-        localStreamRef.current.getTracks().forEach(track => {
-          track.stop();
-          console.log(`[Media] Stopped ${track.kind} track`);
+      // FIXED: Better video handling
+      try {
+        await new Promise((resolve, reject) => {
+          localVideoRef.current.onloadedmetadata = resolve;
+          localVideoRef.current.onerror = reject;
+          setTimeout(reject, 5000); // 5 second timeout
         });
-        localStreamRef.current = null;
-      }
-
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error('Media devices not supported by this browser');
-      }
-
-      console.log('[Media] Requesting new media stream...');
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          width: { ideal: 1280, min: 640, max: 1920 },
-          height: { ideal: 720, min: 480, max: 1080 },
-          frameRate: { ideal: 30, min: 15, max: 60 },
-          facingMode: 'user'
-        },
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-          sampleRate: { ideal: 44100 }
-        }
-      });
-
-      console.log('[Media] New media stream obtained:', {
-        id: stream.id,
-        videoTracks: stream.getVideoTracks().length,
-        audioTracks: stream.getAudioTracks().length,
-        active: stream.active
-      });
-
-      localStreamRef.current = stream;
-
-      if (localVideoRef.current) {
-        localVideoRef.current.srcObject = stream;
-        console.log('[Media] Stream attached to local video element');
         
-        try {
-          await localVideoRef.current.play();
-          console.log('[Media] Local video playing');
-        } catch (playError) {
-          console.warn('[Media] Auto-play prevented:', playError);
-        }
+        await localVideoRef.current.play();
+        console.log('[Media] Local video playing');
+      } catch (playError) {
+        console.warn('[Media] Auto-play prevented or video load failed:', playError);
       }
-
-      return stream;
-
-    } catch (error) {
-      console.error('[Media] Error accessing media devices:', error);
-
-      switch (error.name) {
-        case 'NotAllowedError':
-          setError('Camera and microphone access denied. Please allow permissions and refresh.');
-          break;
-        case 'NotFoundError':
-          setError('No camera or microphone found. Please connect your devices.');
-          break;
-        case 'NotSupportedError':
-          setError('Your browser does not support video calls.');
-          break;
-        case 'OverconstrainedError':
-          console.warn('[Media] Constraints too strict, trying fallback...');
-          return await initializeMediaFallback();
-        default:
-          setError(`Media error: ${error.message}`);
-          break;
-      }
-      throw error;
     }
-  };
+
+    return stream;
+
+  } catch (error) {
+    console.error('[Media] Error accessing media devices:', error);
+    // Error handling remains the same...
+    throw error;
+  }
+};
 
   // Fallback media initialization
   const initializeMediaFallback = async () => {
@@ -369,25 +363,55 @@ const VideoCallPage = () => {
 
     // Handle remote track
  peerConnection.ontrack = (event) => {
-  console.log('[Peer] Received remote track event:', event);
-  if (event.streams.length > 0) {
-    const remoteStream = event.streams[0];
-    remoteStreamRef.current = remoteStream;
+    console.log('[Peer] Received remote track event:', {
+      streamsLength: event.streams.length,
+      trackKind: event.track?.kind,
+      trackId: event.track?.id,
+      trackEnabled: event.track?.enabled,
+      trackReadyState: event.track?.readyState
+    });
 
-    if (remoteVideoRef.current) {
-      remoteVideoRef.current.srcObject = remoteStream;
-      console.log('[Peer] Remote stream attached to video element');
+    if (event.streams.length > 0) {
+      const remoteStream = event.streams[0];
+      remoteStreamRef.current = remoteStream;
 
-      remoteVideoRef.current.play().catch(err => {
-        console.warn('[Peer] Auto-play prevented:', err);
+      console.log('[Peer] Remote stream details:', {
+        id: remoteStream.id,
+        active: remoteStream.active,
+        videoTracks: remoteStream.getVideoTracks().length,
+        audioTracks: remoteStream.getAudioTracks().length
       });
-    }
 
-    setConnectionState('connected');
-  } else {
-    console.warn('[Peer] ontrack event received with no streams');
-  }
-};
+      if (remoteVideoRef.current) {
+        console.log('[Peer] Attaching remote stream to video element');
+        remoteVideoRef.current.srcObject = remoteStream;
+
+        // FIXED: Better video element handling
+        remoteVideoRef.current.onloadedmetadata = () => {
+          console.log('[Peer] Remote video metadata loaded');
+          remoteVideoRef.current.play().catch(err => {
+            console.warn('[Peer] Auto-play prevented:', err);
+          });
+        };
+
+        remoteVideoRef.current.oncanplay = () => {
+          console.log('[Peer] Remote video can play');
+        };
+
+        remoteVideoRef.current.onplaying = () => {
+          console.log('[Peer] Remote video is playing');
+          setConnectionState('connected');
+        };
+
+        remoteVideoRef.current.onerror = (error) => {
+          console.error('[Peer] Remote video error:', error);
+        };
+      }
+    } else {
+      console.warn('[Peer] ontrack event received with no streams');
+    }
+  };
+
 
     // Connection state monitoring
     peerConnection.onconnectionstatechange = () => {
@@ -463,31 +487,55 @@ const VideoCallPage = () => {
     });
   };
 
-  // Enhanced ICE candidate queue processing
-// Drain queued ICE candidates when remote description is set
+
+
+
 const drainIceCandidateQueue = async () => {
   console.log('[ICE] drainIceCandidateQueue called');
   console.log(`[ICE] Queue length: ${iceCandidateQueueRef.current.length}`);
   console.log(`[ICE] remoteDescriptionSetRef: ${remoteDescriptionSetRef.current}`);
-  console.log(`[ICE] peerConnectionRef current:`, peerConnectionRef.current);
+  console.log(`[ICE] peerConnectionRef exists:`, !!peerConnectionRef.current);
 
-  if (
-    iceCandidateQueueRef.current.length > 0 &&
-    peerConnectionRef.current &&
-    remoteDescriptionSetRef.current
-  ) {
-    console.log(`[ICE] Draining ${iceCandidateQueueRef.current.length} queued ICE candidates`);
+  const pc = peerConnectionRef.current;
 
-    const candidates = [...iceCandidateQueueRef.current];
-    iceCandidateQueueRef.current = []; // Clear queue immediately
+  if (!pc || !remoteDescriptionSetRef.current) {
+    console.log('[ICE] Not ready: peerConnection or remoteDescription flag not set');
+    return;
+  }
 
-    for (const candidate of candidates) {
-      try {
-        await peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(candidate));
-        console.log('[ICE] Drained and added queued ICE candidate');
-      } catch (error) {
-        console.error('[ICE] Failed to add queued candidate:', error);
+  // ✅ Wait until remoteDescription is really set (not null)
+  let retries = 0;
+  while (!pc.remoteDescription && retries < 5) {
+    console.log('[ICE] Waiting for remoteDescription to be actually set...');
+    await new Promise(resolve => setTimeout(resolve, 100));
+    retries++;
+  }
+
+  if (!pc.remoteDescription) {
+    console.warn('[ICE] remoteDescription still null after waiting, skipping drain');
+    return;
+  }
+
+  if (iceCandidateQueueRef.current.length === 0) {
+    console.log('[ICE] No ICE candidates to drain');
+    return;
+  }
+
+  console.log(`[ICE] Draining ${iceCandidateQueueRef.current.length} queued ICE candidates`);
+
+  const candidates = [...iceCandidateQueueRef.current];
+  iceCandidateQueueRef.current = [];
+
+  for (const candidate of candidates) {
+    try {
+      if (candidate && (candidate.candidate || candidate.sdpMid || candidate.sdpMLineIndex !== undefined)) {
+        await pc.addIceCandidate(new RTCIceCandidate(candidate));
+        console.log('[ICE] Successfully added queued ICE candidate');
+      } else {
+        console.warn('[ICE] Invalid candidate data, skipping:', candidate);
       }
+    } catch (error) {
+      console.error('[ICE] Failed to add queued candidate:', error);
     }
   }
 };
@@ -497,17 +545,33 @@ const handleReceiveIceCandidate = async (data) => {
   console.log('[ICE] Received ICE candidate data:', data);
 
   try {
-    if (!data.candidate) {
+    if (!data || !data.candidate) {
       console.warn('[ICE] No ICE candidate in received data');
       return;
     }
 
     const candidateData = data.candidate;
 
-    if (peerConnectionRef.current && remoteDescriptionSetRef.current) {
+    // FIXED: Better validation of candidate data
+    if (!candidateData.candidate && !candidateData.sdpMid && candidateData.sdpMLineIndex === undefined) {
+      console.warn('[ICE] Invalid candidate data received:', candidateData);
+      return;
+    }
+
+    if (peerConnectionRef.current && 
+        remoteDescriptionSetRef.current && 
+        peerConnectionRef.current.remoteDescription) { // ADDED: Check remote description exists
+      
       console.log('[ICE] Adding ICE candidate immediately to peer connection...');
-      await peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(candidateData));
-      console.log('[ICE] ICE candidate added successfully');
+      
+      try {
+        await peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(candidateData));
+        console.log('[ICE] ICE candidate added successfully');
+      } catch (addError) {
+        console.error('[ICE] Failed to add ICE candidate immediately:', addError);
+        // If immediate add fails, queue it
+        iceCandidateQueueRef.current.push(candidateData);
+      }
     } else {
       console.log('[ICE] Peer connection not ready, queueing ICE candidate');
       iceCandidateQueueRef.current.push(candidateData);
@@ -518,72 +582,103 @@ const handleReceiveIceCandidate = async (data) => {
   }
 };
 
+ // 3. FIXED: Enhanced offer handling with proper sequencing
+const handleReceiveOffer = async (data) => {
+  if (isOfferProcessingRef.current) {
+    console.warn('[Offer] Already processing an offer, ignoring duplicate');
+    return;
+  }
 
-  // Enhanced offer handling with robust ICE management
-  const handleReceiveOffer = async (data) => {
-    if (isOfferProcessingRef.current) {
-      console.warn('[Offer] Already processing an offer, ignoring duplicate');
-      return;
+  isOfferProcessingRef.current = true;
+  console.log('[Offer] Received offer from:', data.fromUserId);
+
+  try {
+    // Reset connection state
+    resetConnectionState();
+
+    // Step 1: Ensure local media is available
+    if (!localStreamRef.current || !localStreamRef.current.active) {
+      console.log('[Offer] No active local stream, initializing media...');
+      await initializeMedia();
+      // FIXED: Add longer wait for media to be ready
+      await new Promise(resolve => setTimeout(resolve, 2000));
     }
 
-    isOfferProcessingRef.current = true;
-    console.log('[Offer] Received offer from:', data.fromUserId);
-
-    try {
-      // Step 1: Ensure local media is available
-      if (!localStreamRef.current || !localStreamRef.current.active) {
-        console.log('[Offer] No active local stream, initializing media...');
-        await initializeMedia();
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      }
-
-      if (!localStreamRef.current) {
-        throw new Error('Failed to obtain media stream for answering');
-      }
-
-      // Step 2: Initialize peer connection
-      console.log('[Offer] Initializing peer connection...');
-      const pc = initializePeerConnection();
-
-      // Step 3: Set remote description FIRST
-      console.log('[Offer] Setting remote description...');
-      await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
-      remoteDescriptionSetRef.current = true; // Mark remote description as set
-      console.log('[SDP] Remote description set, draining ICE candidates...');
-
-      // Step 4: Drain any queued ICE candidates
-      await drainIceCandidateQueue();
-
-      // Step 5: Add local tracks
-      console.log('[Offer] Adding local tracks to peer connection...');
-      addTracksToPC(pc, localStreamRef.current);
-
-      // Step 6: Create and set answer
-      console.log('[Offer] Creating SDP answer...');
-      const answer = await pc.createAnswer();
-
-      console.log('[Offer] Setting local description...');
-      await pc.setLocalDescription(answer);
-
-      // Step 7: Send answer
-      if (socketRef.current) {
-        console.log('[Offer] Sending SDP answer back to offerer...');
-        socketRef.current.emit('call-answer', {
-          answer: answer,
-          targetUserId: data.fromUserId
-        });
-      }
-
-      setConnectionState('connecting');
-    } catch (error) {
-      console.error('[Offer] Error while handling incoming offer:', error);
-      setError('Failed to accept incoming call');
-    } finally {
-      isOfferProcessingRef.current = false;
+    if (!localStreamRef.current || !localStreamRef.current.active) {
+      throw new Error('Failed to obtain active media stream for answering');
     }
-  };
 
- // Handle received answer and set remote description
+    // Step 2: Initialize peer connection
+    console.log('[Offer] Initializing peer connection...');
+    const pc = initializePeerConnection();
+
+    // Step 3: Add local tracks BEFORE setting remote description
+    console.log('[Offer] Adding local tracks to peer connection...');
+    addTracksToPC(pc, localStreamRef.current);
+    
+    // FIXED: Wait a bit for tracks to be properly added
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    // Step 4: Set remote description
+    console.log('[Offer] Setting remote description...');
+    console.log('[Offer] Offer SDP:', data.offer);
+    
+    await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
+    remoteDescriptionSetRef.current = true;
+    
+    console.log('[SDP] Remote description set successfully');
+    console.log('[SDP] Remote description type:', pc.remoteDescription?.type);
+    console.log('[SDP] Remote description exists:', !!pc.remoteDescription);
+
+    // Step 5: Immediately drain any queued ICE candidates
+    console.log('[SDP] Draining ICE candidates after setting remote description...');
+    await drainIceCandidateQueue();
+
+    // Step 6: Create and set answer
+    console.log('[Offer] Creating SDP answer...');
+    const answer = await pc.createAnswer({
+      offerToReceiveAudio: true,
+      offerToReceiveVideo: true
+    });
+
+    console.log('[Offer] Setting local description...');
+    await pc.setLocalDescription(answer);
+    
+    console.log('[Offer] Local description set, type:', pc.localDescription?.type);
+
+    // Step 7: Send answer
+    if (socketRef.current && socketRef.current.connected) {
+      console.log('[Offer] Sending SDP answer back to offerer...');
+      socketRef.current.emit('call-answer', {
+        answer: answer,
+        targetUserId: data.fromUserId
+      });
+    } else {
+      throw new Error('Socket not connected - cannot send answer');
+    }
+
+    setConnectionState('connecting');
+    console.log('[Offer] Offer handling completed successfully');
+
+  } catch (error) {
+    console.error('[Offer] Error while handling incoming offer:', error);
+    setError(`Failed to accept incoming call: ${error.message}`);
+    
+    // Clean up on error
+    if (peerConnectionRef.current) {
+      peerConnectionRef.current.close();
+      peerConnectionRef.current = null;
+    }
+    resetConnectionState();
+  } finally {
+    isOfferProcessingRef.current = false;
+  }
+};
+
+
+
+
+// 4. FIXED: Handle received answer with proper validation
 const handleReceiveAnswer = async (data) => {
   if (isAnswerProcessingRef.current) {
     console.warn('[Answer] Already processing an answer, ignoring duplicate');
@@ -594,26 +689,54 @@ const handleReceiveAnswer = async (data) => {
   console.log('[Answer] Received answer data:', data);
 
   try {
-    if (peerConnectionRef.current) {
-      console.log('[Answer] Before setting remoteDescriptionSetRef:', remoteDescriptionSetRef.current);
-      console.log('[Answer] Setting remote description with received answer...');
-      await peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(data.answer));
-      remoteDescriptionSetRef.current = true;
-      console.log('[Answer] After setting remoteDescriptionSetRef:', remoteDescriptionSetRef.current);
-
-      console.log('[SDP] Remote description set, draining ICE candidates...');
-      await drainIceCandidateQueue();
-      console.log('[SDP] Finished draining ICE candidates');
-    } else {
-      console.warn('[Answer] No peer connection found — cannot set remote description');
+    if (!peerConnectionRef.current) {
+      throw new Error('No peer connection available to set answer');
     }
+
+    if (!data.answer) {
+      throw new Error('No answer data received');
+    }
+
+    console.log('[Answer] Before setting remote description');
+    console.log('[Answer] Current signaling state:', peerConnectionRef.current.signalingState);
+    console.log('[Answer] Answer SDP:', data.answer);
+
+    // FIXED: Check signaling state before setting remote description
+    if (peerConnectionRef.current.signalingState !== 'have-local-offer') {
+      console.warn('[Answer] Unexpected signaling state for answer:', peerConnectionRef.current.signalingState);
+    }
+
+    console.log('[Answer] Setting remote description with received answer...');
+    await peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(data.answer));
+    remoteDescriptionSetRef.current = true;
+    
+    console.log('[Answer] Remote description set successfully');
+    console.log('[Answer] New signaling state:', peerConnectionRef.current.signalingState);
+    console.log('[Answer] Remote description exists:', !!peerConnectionRef.current.remoteDescription);
+
+    // FIXED: Immediately drain ICE candidates after setting remote description
+    console.log('[SDP] Draining ICE candidates after setting answer...');
+    await drainIceCandidateQueue();
+    
+    console.log('[Answer] Answer processing completed successfully');
+
   } catch (error) {
     console.error('[Answer] Error handling received answer:', error);
-    setError('Failed to process call answer');
+    setError(`Failed to process call answer: ${error.message}`);
+    
+    // Clean up on error
+    if (peerConnectionRef.current) {
+      peerConnectionRef.current.close();
+      peerConnectionRef.current = null;
+    }
+    resetConnectionState();
   } finally {
     isAnswerProcessingRef.current = false;
   }
 };
+
+
+
   // Handle call ended
   const handleCallEnded = () => {
     console.log('[Call] Ending call...');
@@ -785,83 +908,96 @@ const handleReceiveAnswer = async (data) => {
     setShowContactList(false);
   };
 
-  // Enhanced call initiation with proper sequencing
-  const handleInitiateCall = async () => {
-    if (!selectedContact || !socketRef.current) {
-      console.error('Cannot initiate call: missing contact or socket connection');
-      return;
+// 6. FIXED: Enhanced call initiation with better error handling
+const handleInitiateCall = async () => {
+  if (!selectedContact || !socketRef.current || !socketRef.current.connected) {
+    console.error('Cannot initiate call: missing contact or socket connection');
+    setError('Cannot start call - no connection to server');
+    return;
+  }
+
+  try {
+    setConnectionState('connecting');
+    console.log('[Call] Starting call initiation process...');
+    
+    // Reset connection state
+    resetConnectionState();
+    
+    // Step 1: Ensure media stream
+    if (!localStreamRef.current || !localStreamRef.current.active) {
+      console.log('[Call] No active local stream, initializing media...');
+      await initializeMedia();
+      await new Promise(resolve => setTimeout(resolve, 2000)); // FIXED: Longer wait
     }
 
-    try {
-      setConnectionState('connecting');
-      console.log('[Call] Starting call initiation process...');
-      
-      // Step 1: Ensure media stream
-      if (!localStreamRef.current || !localStreamRef.current.active) {
-        console.log('[Call] No active local stream, initializing media...');
-        await initializeMedia();
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      }
-
-      if (!localStreamRef.current) {
-        throw new Error('Failed to obtain media stream');
-      }
-
-      // Step 2: Initialize peer connection
-      console.log('[Call] Initializing peer connection...');
-      const pc = initializePeerConnection();
-      
-      // Step 3: Add local tracks
-      console.log('[Call] Adding local tracks to peer connection...');
-      addTracksToPC(pc, localStreamRef.current);
-
-      // Step 4: Create offer
-      console.log('[Call] Creating offer...');
-      const offer = await pc.createOffer({
-        offerToReceiveAudio: true,
-        offerToReceiveVideo: true,
-        iceRestart: false
-      });
-      
-      console.log('[Call] Setting local description...');
-      await pc.setLocalDescription(offer);
-
-      // Step 5: Send offer
-      console.log('[Call] Sending offer to:', selectedContact._id);
-      socketRef.current.emit('call-offer', {
-        offer: offer,
-        targetUserId: selectedContact._id,
-        callType: 'video',
-        fromUserId: getCurrentUserId()
-      });
-
-      // Step 6: Call API
-      const participantType = userType === 'Client' ? 'Doctor' : 'Client';
-      const result = await initiateCall(
-        selectedContact._id, 
-        participantType, 
-        'video',
-        mediaState.cameraEnabled,
-        mediaState.microphoneEnabled
-      );
-
-      if (result.success) {
-        console.log('[Call] API call successful:', result.data);
-      } else {
-        throw new Error(result.message || 'Failed to initiate call');
-      }
-
-    } catch (error) {
-      console.error('[Call] Error initiating call:', error);
-      setError(`Failed to start call: ${error.message}`);
-      setConnectionState('disconnected');
-      
-      if (peerConnectionRef.current) {
-        peerConnectionRef.current.close();
-        peerConnectionRef.current = null;
-      }
+    if (!localStreamRef.current || !localStreamRef.current.active) {
+      throw new Error('Failed to obtain active media stream');
     }
-  };
+
+    // Step 2: Initialize peer connection
+    console.log('[Call] Initializing peer connection...');
+    const pc = initializePeerConnection();
+    
+    // Step 3: Add local tracks
+    console.log('[Call] Adding local tracks to peer connection...');
+    addTracksToPC(pc, localStreamRef.current);
+    
+    // FIXED: Wait for tracks to be added
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    // Step 4: Create offer
+    console.log('[Call] Creating offer...');
+    const offer = await pc.createOffer({
+      offerToReceiveAudio: true,
+      offerToReceiveVideo: true,
+      iceRestart: false
+    });
+    
+    console.log('[Call] Offer created:', offer);
+    console.log('[Call] Setting local description...');
+    await pc.setLocalDescription(offer);
+    
+    console.log('[Call] Local description set, signaling state:', pc.signalingState);
+
+    // Step 5: Send offer
+    console.log('[Call] Sending offer to:', selectedContact._id);
+    socketRef.current.emit('call-offer', {
+      offer: offer,
+      targetUserId: selectedContact._id,
+      callType: 'video',
+      fromUserId: getCurrentUserId()
+    });
+
+    // Step 6: Call API
+    const participantType = userType === 'Client' ? 'Doctor' : 'Client';
+    const result = await initiateCall(
+      selectedContact._id, 
+      participantType, 
+      'video',
+      mediaState.cameraEnabled,
+      mediaState.microphoneEnabled
+    );
+
+    if (result.success) {
+      console.log('[Call] API call successful:', result.data);
+    } else {
+      throw new Error(result.message || 'Failed to initiate call');
+    }
+
+    console.log('[Call] Call initiation completed successfully');
+
+  } catch (error) {
+    console.error('[Call] Error initiating call:', error);
+    setError(`Failed to start call: ${error.message}`);
+    setConnectionState('disconnected');
+    
+    if (peerConnectionRef.current) {
+      peerConnectionRef.current.close();
+      peerConnectionRef.current = null;
+    }
+    resetConnectionState();
+  }
+};
 
   // Handle accepting incoming call
   const handleAcceptCall = async (callId) => {
