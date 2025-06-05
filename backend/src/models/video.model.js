@@ -1,5 +1,4 @@
-// models/videoCall.model.js
-import mongoose from "mongoose";
+import mongoose from 'mongoose';
 
 const videoCallSchema = new mongoose.Schema({
   participants: [{
@@ -20,8 +19,39 @@ const videoCallSchema = new mongoose.Schema({
     leftAt: {
       type: Date,
       default: null
+    },
+    mediaState: {
+      cameraEnabled: {
+        type: Boolean,
+        default: false
+      },
+      microphoneEnabled: {
+        type: Boolean,
+        default: false
+      },
+      screenSharing: {
+        type: Boolean,
+        default: false
+      },
+      qualitySettings: {
+        videoQuality: {
+          type: String,
+          enum: ['low', 'medium', 'high'],
+          default: 'high'
+        },
+        audioQuality: {
+          type: String,
+          enum: ['low', 'medium', 'high'],
+          default: 'high'
+        },
+        updatedAt: {
+          type: Date,
+          default: Date.now
+        }
+      }
     }
   }],
+  
   initiator: {
     userId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -34,40 +64,50 @@ const videoCallSchema = new mongoose.Schema({
       required: true
     }
   },
+  
   callStatus: {
     type: String,
-    enum: ['initiated', 'ringing', 'ongoing', 'ended', 'rejected', 'missed'],
+    enum: ['initiated', 'ringing', 'ongoing', 'ended', 'rejected'],
     default: 'initiated'
   },
+  
   callType: {
     type: String,
     enum: ['video', 'audio'],
     default: 'video'
   },
-  duration: {
-    type: Number, // in seconds
-    default: 0
-  },
-  startTime: {
-    type: Date,
-    default: null
-  },
-  endTime: {
-    type: Date,
-    default: null
-  },
+  
   roomId: {
     type: String,
     required: true,
     unique: true
   },
+  
+  startTime: {
+    type: Date,
+    default: null
+  },
+  
+  endTime: {
+    type: Date,
+    default: null
+  },
+  
+  duration: {
+    type: Number, // Duration in seconds
+    default: 0
+  },
+  
   callQuality: {
     rating: {
       type: Number,
       min: 1,
       max: 5
     },
-    feedback: String,
+    feedback: {
+      type: String,
+      default: ''
+    },
     ratedBy: {
       type: mongoose.Schema.Types.ObjectId,
       refPath: 'callQuality.raterType'
@@ -77,29 +117,37 @@ const videoCallSchema = new mongoose.Schema({
       enum: ['Doctor', 'Client']
     }
   },
+  
   technicalIssues: [{
-    issue: String,
-    timestamp: {
-      type: Date,
-      default: Date.now
+    issue: {
+      type: String,
+      required: true
     },
     reportedBy: {
       type: mongoose.Schema.Types.ObjectId,
-      refPath: 'technicalIssues.reporterType'
+      refPath: 'technicalIssues.reporterType',
+      required: true
     },
     reporterType: {
       type: String,
-      enum: ['Doctor', 'Client']
+      enum: ['Doctor', 'Client'],
+      required: true
+    },
+    timestamp: {
+      type: Date,
+      default: Date.now
     }
   }]
 }, {
-  timestamps: true
+  timestamps: true // This adds createdAt and updatedAt automatically
 });
 
-// Indexes
-videoCallSchema.index({ 'participants.userId': 1 });
+// Index for efficient queries
+videoCallSchema.index({ 'participants.userId': 1, callStatus: 1 });
 videoCallSchema.index({ roomId: 1 });
-videoCallSchema.index({ callStatus: 1 });
 videoCallSchema.index({ createdAt: -1 });
+videoCallSchema.index({ 'participants.userId': 1, createdAt: -1 });
 
-export default mongoose.model("VideoCall", videoCallSchema);
+const VideoCall = mongoose.model('VideoCall', videoCallSchema);
+
+export default VideoCall;

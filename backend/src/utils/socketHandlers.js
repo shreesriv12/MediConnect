@@ -34,22 +34,23 @@ const authenticateSocket = async (socket, token) => {
 
 // Initialize socket connection
 const initializeSocket = (io) => {
-  io.use(async (socket, next) => {
-    try {
-      const token = socket.handshake.auth.token || socket.handshake.headers.authorization?.split(' ')[1];
-      if (!token) {
-        return next(new Error('Authentication token required'));
-      }
-      
-      const { user, userType } = await authenticateSocket(socket, token);
-      socket.user = user;
-      socket.userType = userType;
-      
-      next();
-    } catch (error) {
-      next(new Error('Authentication failed'));
+io.use(async (socket, next) => {
+  try {
+    const token = socket.handshake.auth.token || socket.handshake.headers.authorization?.split(' ')[1];
+    console.log("Socket auth token:", token);
+    if (!token) {
+      return next(new Error('Authentication token required'));
     }
-  });
+
+    const { user, userType } = await authenticateSocket(socket, token);
+    socket.user = user;
+    socket.userType = userType;
+    next();
+  } catch (error) {
+    console.error("Socket auth error:", error);
+    next(new Error('Authentication failed'));
+  }
+});
 
   io.on('connection', (socket) => {
     console.log(`${socket.userType} ${socket.user.name} connected: ${socket.id}`);
@@ -122,28 +123,62 @@ const initializeSocket = (io) => {
     });
 
     // WebRTC signaling events
-    socket.on('offer', ({ roomId, offer, targetUserId }) => {
-      socket.to(roomId).emit('offer', {
+ // Map to track userId => socketId
+const userSocketMap = new Map();
+
+io.on('connection', (socket) => {
+  const userId = socket.user._id;  // Assuming you attach user info to socket
+
+  // Save mapping
+  userSocketMap.set(userId, socket.id);
+
+  socket.on('offer', ({ offer, targetUserId }) => {
+    const targetSocketId = userSocketMap.get(targetUserId);
+    if (targetSocketId) {
+      io.to(targetSocketId).emit('offer', {
         offer,
-        fromUserId: socket.user._id,
+        fromUserId: userId,
         fromUserName: socket.user.name
       });
-    });
+    } else {
+      console.log(`Target user ${targetUserId} is not connected.`);
+    }
+  });
 
-    socket.on('answer', ({ roomId, answer, targetUserId }) => {
-      socket.to(roomId).emit('answer', {
-        answer,
-        fromUserId: socket.user._id,
-        fromUserName: socket.user.name
-      });
-    });
+  socket.on('disconnect', () => {
+    userSocketMap.delete(userId);
+  });
+});
 
-    socket.on('iceCandidate', ({ roomId, candidate, targetUserId }) => {
-      socket.to(roomId).emit('iceCandidate', {
-        candidate,
-        fromUserId: socket.user._id
-      });
+socket.on('answer', ({ answer, targetUserId }) => {
+  const targetSocketId = userSocketMap.get(targetUserId);
+  if (targetSocketId) {
+    io.to(targetSocketId).emit('answer', {
+      answer,
+      fromUserId: socket.user._id,
+      fromUserName: socket.user.name
     });
+  } else {
+    console.log(`Target user ${targetUserId} is not connected.`);
+  }
+});
+
+
+ socket.on('iceCandidate', ({ candidate, targetUserId }) => {
+  const targetConnection = connectedUsers.get(targetUserId?.toString());
+
+  if (targetConnection) {
+    io.to(targetConnection.socketId).emit('iceCandidate', {
+      candidate,
+      fromUserId: socket.user._id,
+      fromUserName: socket.user.name
+    });
+    console.log(`[Server] Forwarded ICE candidate to: ${targetUserId}`);
+  } else {
+    console.warn(`[Server] No socket found for ICE candidate target user: ${targetUserId}`);
+  }
+});
+
 
     // Handle call events
     socket.on('toggleVideo', ({ roomId, videoEnabled }) => {

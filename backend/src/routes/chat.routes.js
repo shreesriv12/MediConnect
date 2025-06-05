@@ -17,11 +17,11 @@ const router = Router();
 router.use(isAuthenticated);
 
 // Chat routes
-router.route('/create-or-get').post(createOrGetChat);
-router.route('/user-chats').get(getUserChats);
-router.route('/send-message').post(upload.single('file'), sendMessage);
-router.route('/:chatId/messages').get(getChatMessages);
-router.route('/:chatId/mark-read').patch(markMessagesAsRead);
-router.route('/:chatId/messages/:messageId').delete(deleteMessage);
+router.post('/create-or-get',isAuthenticated,createOrGetChat);
+router.get('/user-chats',isAuthenticated,getUserChats);
+router.post('/send-message',isAuthenticated,upload.single('file'), sendMessage);
+router.get('/:chatId/messages',isAuthenticated,getChatMessages);
+router.patch('/:chatId/mark-read',isAuthenticated,markMessagesAsRead);
+router.delete('/:chatId/messages/:messageId',isAuthenticated,deleteMessage);
 
 export default router;

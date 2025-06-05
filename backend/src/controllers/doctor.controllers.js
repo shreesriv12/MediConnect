@@ -288,7 +288,124 @@ const verifyOtp = asyncHandler(async (req, res) => {
 });
 
 
+const getAllDoctors = asyncHandler(async (req, res) => {
+  try {
+    const {
+      page = 1,
+      limit = 10,
+      specialization,
+      experience,
+      gender,
+      verified,
+      search
+    } = req.query;
 
+    // Build filter object
+    const filter = {};
+    
+    if (specialization) {
+      filter.specialization = { $regex: specialization, $options: 'i' };
+    }
+    
+    if (experience) {
+      filter.experience = { $gte: parseInt(experience) };
+    }
+    
+    if (gender) {
+      filter.gender = gender;
+    }
+    
+    if (verified !== undefined) {
+      filter.verified = verified === 'true';
+    }
+    
+    // Search functionality (name, email, specialization)
+    if (search) {
+      filter.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } },
+        { specialization: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    // Calculate pagination
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    
+    // Get total count for pagination info
+    const totalDoctors = await Doctor.countDocuments(filter);
+    
+    // Fetch doctors with pagination and exclude sensitive fields
+    const doctors = await Doctor.find(filter)
+      .select('-password -refreshToken -otp -otpExpires')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    // Pagination metadata
+    const totalPages = Math.ceil(totalDoctors / parseInt(limit));
+    const hasNextPage = parseInt(page) < totalPages;
+    const hasPrevPage = parseInt(page) > 1;
+
+    const paginationInfo = {
+      currentPage: parseInt(page),
+      totalPages,
+      totalDoctors,
+      limit: parseInt(limit),
+      hasNextPage,
+      hasPrevPage
+    };
+
+    return res.status(200).json(
+      new ApiResponse(
+        200,
+        {
+          doctors,
+          pagination: paginationInfo
+        },
+        `Found ${doctors.length} doctors`
+      )
+    );
+  } catch (error) {
+    throw new ApiError(500, "Error fetching doctors: " + error.message);
+  }
+});
+
+const getDoctorById = asyncHandler(async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Validate ObjectId format
+    if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+      throw new ApiError(400, "Invalid doctor ID format");
+    }
+
+    // Find doctor by ID and exclude sensitive fields
+    const doctor = await Doctor.findById(id).select(
+      '-password -refreshToken -otp -otpExpires'
+    );
+
+    if (!doctor) {
+      throw new ApiError(404, "Doctor not found");
+    }
+
+    // Only return verified doctors for public access
+    // If you want to allow access to unverified doctors for admin, add auth middleware
+    if (!doctor.verified) {
+      throw new ApiError(404, "Doctor profile not available");
+    }
+
+    return res.status(200).json(
+      new ApiResponse(200, doctor, "Doctor details fetched successfully")
+    );
+  } catch (error) {
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    throw new ApiError(500, "Error fetching doctor details: " + error.message);
+  }
+});
+
+// Export the new functions along with existing ones
 export { 
   registerDoctor, 
   loginDoctor, 
@@ -298,4 +415,6 @@ export {
   refreshAccessToken,
   getCurrentDoctor,
   updateDoctor,
+  getAllDoctors,    // New function
+  getDoctorById,    // New function
 };

@@ -9,6 +9,8 @@ import {
   refreshAccessToken,
   verifyOtp,
   getCurrentClient,
+  getAllClients,
+  getClientById
 } from '../controllers/client.controllers.js';
 import { upload } from '../middlewares/multer.middleware.js';
 import { isAuthenticated } from '../middlewares/auth.middleware.js';
@@ -24,5 +26,6 @@ router.post('/logout', isAuthenticated, logoutClient);
 router.post('/refresh-token', refreshAccessToken);
 router.get('/me', isAuthenticated, getCurrentClient);
 router.patch('/update', isAuthenticated, upload.single('avatar'), updateClient);
-
+router.route("/").get(getAllClients);          
+router.route("/:id").get(getClientById);  
 export default router;

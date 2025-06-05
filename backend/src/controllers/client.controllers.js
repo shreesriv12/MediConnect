@@ -127,7 +127,6 @@ const verifyEmail = asyncHandler(async (req, res) => {
   res.status(200).json(new ApiResponse(200, { message: "Email verified successfully" }));
 });
 
-
 const logoutClient = asyncHandler(async (req, res) => {
   await Client.findByIdAndUpdate(req.client._id, { refreshToken: null });
   return res.status(200).clearCookie("accessToken").clearCookie("refreshToken").json(new ApiResponse(200, {}, "Client logged out successfully"));
@@ -199,15 +198,83 @@ const verifyOtp = asyncHandler(async (req, res) => {
 
 const getCurrentClient = asyncHandler(async (req, res) => {
    // Find the client by ID and select only the fields you need
-   const client = await Client.findById(req.client._id)
-   .select("-password -refreshToken -otp -otpExpires -name -email -age -gender -avatar -__v");
- 
+ const client = await Client.findById(req.client._id)
+  .select("-password -refreshToken -otp -otpExpires -__v");
+
  return res
    .status(200)
    .json(new ApiResponse(200, client, "Current Client Data"));
 });
 
+// Get all clients with pagination and filtering options
+const getAllClients = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 10, verified, gender, sortBy = 'createdAt', sortOrder = 'desc' } = req.query;
+  
+  // Build filter object
+  const filter = {};
+  if (verified !== undefined) {
+    filter.verified = verified === 'true';
+  }
+  if (gender) {
+    filter.gender = gender;
+  }
 
+  // Build sort object
+  const sort = {};
+  sort[sortBy] = sortOrder === 'asc' ? 1 : -1;
+
+  // Calculate pagination
+  const skip = (parseInt(page) - 1) * parseInt(limit);
+  
+  // Get total count for pagination info
+  const totalClients = await Client.countDocuments(filter);
+  
+  // Fetch clients with filters, sorting, and pagination
+  const clients = await Client.find(filter)
+    .select("-password -refreshToken -otp -otpExpires -verificationToken")
+    .sort(sort)
+    .skip(skip)
+    .limit(parseInt(limit));
+
+  const totalPages = Math.ceil(totalClients / parseInt(limit));
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        clients,
+        pagination: {
+          currentPage: parseInt(page),
+          totalPages,
+          totalClients,
+          hasNextPage: parseInt(page) < totalPages,
+          hasPrevPage: parseInt(page) > 1,
+        },
+      },
+      "Clients retrieved successfully"
+    )
+  );
+});
+
+// Get a specific client by ID
+const getClientById = asyncHandler(async (req, res) => {
+  const { clientId } = req.params;
+  
+  if (!clientId) {
+    throw new ApiError(400, "Client ID is required");
+  }
+
+  const client = await Client.findById(clientId)
+    .select("-password -refreshToken -otp -otpExpires -verificationToken");
+  
+  if (!client) {
+    throw new ApiError(404, "Client not found");
+  }
+
+  return res.status(200).json(
+    new ApiResponse(200, client, "Client retrieved successfully")
+  );
+});
 
 export { 
   registerClient, 
@@ -218,4 +285,6 @@ export {
   refreshAccessToken,
   verifyOtp,
   getCurrentClient,
+  getAllClients,
+  getClientById,
 };

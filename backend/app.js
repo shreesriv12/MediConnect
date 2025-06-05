@@ -139,7 +139,7 @@ app.use("/doctor", doctorRouter);
 app.use("/client", clientRouter);
 app.use("/schedule", scheduleRouter);
 app.use("/chats", chatRouter);
-app.use("/video-calls", videoCallRouter);
+app.use("/video-call", videoCallRouter);
 
 
 // Health check endpoint
