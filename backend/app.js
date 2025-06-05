@@ -9,6 +9,7 @@ import connectDB from "./src/config/db.js";
 import { Server } from "socket.io";
 import { initializeSocket } from "./src/utils/socketHandlers.js";
 import { initiateCall } from "./src/controllers/video.controller.js";
+import  clinicRoutes from './src/routes/clinic.routes.js';
 // Express and HTTP server setup
 const app = express();
 const server = http.createServer(app);
@@ -140,7 +141,7 @@ app.use("/client", clientRouter);
 app.use("/schedule", scheduleRouter);
 app.use("/chats", chatRouter);
 app.use("/video-call", videoCallRouter);
-
+app.use("/clinics", clinicRoutes); 
 
 // Health check endpoint
 app.get('/health', (req, res) => {
