@@ -13,6 +13,7 @@ import DoctorDirectory from '../components/Doctordirectory';
 import ChatPage from '../pages/ChatPage';
 import ClientProfile from '../components/ClientProfile';
 import VideoCallPage from '../pages/VideoPage';
+import NearbyClinicsMap from '../components/NearbyClinicMap';
 function App() {
   
   return (
@@ -31,6 +32,8 @@ function App() {
             <Route path="/chat" element={<ChatPage />} />
             <Route path="/clientprofile" element={<ClientProfile />} />
             <Route path="/video-call" element={<VideoCallPage />} />
+            <Route path="/nearby-clinics" element={<NearbyClinicsMap />} />
+            {/* Redirect to home if no route matches */}
           </Routes>
         </div>
       </Router>

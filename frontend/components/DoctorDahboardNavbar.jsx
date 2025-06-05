@@ -51,6 +51,9 @@ const DoctorDashboardNavbar = () => {
                 <Link to="/doctordirectory" className={`border-transparent ${theme === 'dark' ? 'text-gray-300 hover:text-white' : 'text-gray-500 hover:text-gray-700'} hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
                   Find Clients
                 </Link>
+                <Link to="/video-call" className={`border-transparent ${theme === 'dark' ? 'text-gray-300 hover:bg-gray-700 hover:border-gray-500 hover:text-white' : 'text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'} block pl-3 pr-4 py-2 border-l-4 text-base font-medium`}>
+                              Video Call
+                 </Link>
               </div>
             </div>
             <div className="flex items-center space-x-4">

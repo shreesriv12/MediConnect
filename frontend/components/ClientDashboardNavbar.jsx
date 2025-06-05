@@ -45,12 +45,18 @@ const ClientDashboardNavbar = () => {
                 <Link to="/clientappointments" className={`border-transparent ${theme === 'dark' ? 'text-gray-300 hover:text-white' : 'text-gray-500 hover:text-gray-700'} hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
                   My Appointments
                 </Link>
+                  <Link to="/nearby-clinics" className={`border-transparent ${theme === 'dark' ? 'text-gray-300 hover:text-white' : 'text-gray-500 hover:text-gray-700'} hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
+                 Nearby Clinics 
+                </Link>
                 <Link to="/chat" className={`border-transparent ${theme === 'dark' ? 'text-gray-300 hover:text-white' : 'text-gray-500 hover:text-gray-700'} hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
                   Messages
                 </Link>
                 <Link to="/finddoctors" className={`border-transparent ${theme === 'dark' ? 'text-gray-300 hover:text-white' : 'text-gray-500 hover:text-gray-700'} hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
                   Find Doctors
                 </Link>
+              <Link to="/video-call" className={`border-transparent ${theme === 'dark' ? 'text-gray-300 hover:text-white' : 'text-gray-500 hover:text-gray-700'} hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
+                Video Call
+              </Link>
               </div>
             </div>
             <div className="flex items-center space-x-4">
@@ -149,12 +155,16 @@ const ClientDashboardNavbar = () => {
               <Link to="/clientmessages" className={`border-transparent ${theme === 'dark' ? 'text-gray-300 hover:bg-gray-700 hover:border-gray-500 hover:text-white' : 'text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'} block pl-3 pr-4 py-2 border-l-4 text-base font-medium`}>
                 Messages
               </Link>
+                 <Link to="/clientmessages" className={`border-transparent ${theme === 'dark' ? 'text-gray-300 hover:bg-gray-700 hover:border-gray-500 hover:text-white' : 'text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'} block pl-3 pr-4 py-2 border-l-4 text-base font-medium`}>
+                Messages
+              </Link>
               <Link to="/finddoctors" className={`border-transparent ${theme === 'dark' ? 'text-gray-300 hover:bg-gray-700 hover:border-gray-500 hover:text-white' : 'text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'} block pl-3 pr-4 py-2 border-l-4 text-base font-medium`}>
                 Find Doctors
               </Link>
-              <Link to="clientprofile" className={`border-transparent ${theme === 'dark' ? 'text-gray-300 hover:bg-gray-700 hover:border-gray-500 hover:text-white' : 'text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'} block pl-3 pr-4 py-2 border-l-4 text-base font-medium`}>
+              <Link to="/clientprofile" className={`border-transparent ${theme === 'dark' ? 'text-gray-300 hover:bg-gray-700 hover:border-gray-500 hover:text-white' : 'text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'} block pl-3 pr-4 py-2 border-l-4 text-base font-medium`}>
                 My Profile
               </Link>
+            
               {/* Logout option for mobile */}
               <button 
                 onClick={handleLogout}
