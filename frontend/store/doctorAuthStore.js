@@ -6,6 +6,8 @@ const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 const useDoctorAuthStore = create((set, get) => ({
   doctor: null,
+  doctors: [],
+  currentDoctor: null,
   isLoading: false,
   error: null,
   isAuthenticated: false,
@@ -13,8 +15,8 @@ const useDoctorAuthStore = create((set, get) => ({
   isLoggingIn: false,
   isUpdatingProfile: false,
   isCheckingAuth: true,
-  onlineUsers: [],
-  socket: null,
+  isFetchingDoctors: false,
+  isFetchingDoctor: false,
   
   clearError: () => set({ error: null }),
   
@@ -23,6 +25,7 @@ const useDoctorAuthStore = create((set, get) => ({
     try {
       // Use withCredentials to ensure cookies are sent/received
       const response = await axiosInstance.post(`${API_URL}/doctor/register`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
         withCredentials: true
       });
       
@@ -39,10 +42,6 @@ const useDoctorAuthStore = create((set, get) => ({
       
       toast.success("Account created successfully! Please verify your OTP.");
       
-      // Connect socket after registration if doctor is already verified
-      if (doctorData.verified) {
-        get().connectSocket();
-      }
       
       return { success: true, doctorId: doctorData._id };
     } catch (error) {
@@ -72,8 +71,6 @@ const useDoctorAuthStore = create((set, get) => ({
         isAuthenticated: true 
       });
       
-      // Connect socket after verification
-      get().connectSocket();
       
       toast.success("OTP verified successfully!");
       return { success: true };
@@ -88,31 +85,34 @@ const useDoctorAuthStore = create((set, get) => ({
     }
   },
   
-  verifyEmail: async (email, otp) => {
-    set({ isLoading: true, error: null });
-    try {
-      // Use withCredentials to ensure cookies are sent/received
-      const response = await axiosInstance.post(
-        `${API_URL}/doctor/verify-email`, 
-        { email, otp },
-        { withCredentials: true }
-      );
-      
-      set({ isLoading: false });
-      toast.success("Email verified successfully!");
-      return { success: true, message: response.data.data.message };
-    } catch (error) {
-      const errorMessage = error.response?.data?.message || "Email verification failed";
-      set({
-        isLoading: false,
-        error: errorMessage,
-      });
-      toast.error(errorMessage);
-      return { success: false, error: errorMessage };
-    }
-  },
+verifyEmail: async (email, otp) => {
+  set({ isLoading: true, error: null });
+  try {
+    const response = await axiosInstance.post(
+      `${API_URL}/doctor/verify-email`,
+      { email, otp },
+      {
+        headers: { 'Content-Type': 'application/json' },
+        withCredentials: true,
+      }
+    );
+
+    set({ isLoading: false });
+    toast.success("Email verified successfully!");
+    return { success: true, message: response.data.data.message };
+  } catch (error) {
+    const errorMessage = error.response?.data?.message || "Email verification failed";
+    set({
+      isLoading: false,
+      error: errorMessage,
+    });
+    toast.error(errorMessage);
+    return { success: false, error: errorMessage };
+  }
+},
+
   
-  login: async (credentials) => {
+ login: async (credentials) => {
     set({ isLoggingIn: true, error: null });
     try {
       // Always use withCredentials to ensure cookies are sent/received
@@ -122,10 +122,12 @@ const useDoctorAuthStore = create((set, get) => ({
         { withCredentials: true }
       );
   
-      const { doctor } = response.data.data;
+      const { doctor, accessToken, refreshToken } = response.data.data;
       
-      // Store minimal doctor info in localStorage
+      // Store doctor info and tokens in localStorage
       localStorage.setItem("doctorId", doctor._id);
+      if (accessToken) localStorage.setItem("doctorAccessToken", accessToken);
+      if (refreshToken) localStorage.setItem("doctorRefreshToken", refreshToken);
   
       set({
         isLoggingIn: false,
@@ -134,19 +136,19 @@ const useDoctorAuthStore = create((set, get) => ({
       });
   
       toast.success("Logged in successfully!");
-      get().connectSocket();
       return { success: true };
     } catch (error) {
       const errorMessage = error.response?.data?.message || "Login failed";
-      set({ 
-        isLoggingIn: false, 
+      set({
+        isLoggingIn: false,
         error: errorMessage,
-        isAuthenticated: false 
+        isAuthenticated: false,
       });
       toast.error(errorMessage);
       return { success: false, error: errorMessage };
     }
   },
+
   
   logout: async () => {
     set({ isLoading: true, error: null });
@@ -160,14 +162,14 @@ const useDoctorAuthStore = create((set, get) => ({
       
       // Remove any doctor data from localStorage
       localStorage.removeItem("doctorId");
+      localStorage.removeItem("doctorAccessToken");
+      localStorage.removeItem("doctorRefreshToken");
       
       set({ 
         isLoading: false, 
         doctor: null,
         isAuthenticated: false 
       });
-      
-      get().disconnectSocket();
       toast.success("Logged out successfully!");
       return { success: true };
     } catch (error) {
@@ -175,6 +177,8 @@ const useDoctorAuthStore = create((set, get) => ({
       
       // Even if logout API fails, clear local state
       localStorage.removeItem("doctorId");
+      localStorage.removeItem("doctorAccessToken");
+      localStorage.removeItem("doctorRefreshToken");
       
       set({ 
         isLoading: false, 
@@ -182,8 +186,7 @@ const useDoctorAuthStore = create((set, get) => ({
         doctor: null,
         isAuthenticated: false
       });
-      
-      get().disconnectSocket();
+
       toast.error(errorMessage);
       return { success: false };
     }
@@ -203,13 +206,14 @@ const useDoctorAuthStore = create((set, get) => ({
         isAuthenticated: true
       });
       
-      get().connectSocket();
       return { success: true };
     } catch (error) {
       console.log("Error in checkAuth:", error);
       
       // Clear any stored doctor data if authentication check fails
       localStorage.removeItem("doctorId");
+      localStorage.removeItem("doctorAccessToken");
+      localStorage.removeItem("doctorRefreshToken");
       
       set({ 
         doctor: null,
@@ -242,92 +246,100 @@ const useDoctorAuthStore = create((set, get) => ({
       return { success: false, error: errorMessage };
     }
   },
-  
-  connectSocket: () => {
-    const { doctor, socket } = get();
-    if (!doctor || socket?.connected) return;
-  
-    const newSocket = io(API_URL, {
-      transports: ["websocket", "polling"],
-      withCredentials: true,
-    });
-  
-    // Handle successful connection
-    newSocket.on("connect", () => {
-      console.log("Socket connected:", newSocket.id);
-  
-      // Emit user_online only after connected
-      newSocket.emit("user_online", doctor._id);
-    });
-  
-    // Store socket instance
-    set({ socket: newSocket });
-  
-    // Event listeners
-    newSocket.on("getOnlineUsers", (ids) => set({ onlineUsers: ids }));
-    newSocket.on("update_online_users", (users) => set({ onlineUsers: users }));
-    newSocket.on("new_notification", (message) => {
-      toast.success(message);
-    });
-    newSocket.on("connect_error", (err) => {
-      console.error("Socket connection error:", err);
-      toast.error("Connection issue. Will try again soon.");
-    });
-  
-    return () => {
-      newSocket.off("getOnlineUsers");
-      newSocket.off("update_online_users");
-      newSocket.off("new_notification");
-      newSocket.off("connect_error");
-      newSocket.off("connect");
-    };
-  },
-  
-  
-  disconnectSocket: () => {
-    const { socket } = get();
-    if (socket?.connected) {
-      socket.disconnect();
-      set({ socket: null });
+
+  // Get current doctor details (for authenticated user)
+  getCurrentDoctor: async () => {
+    set({ isFetchingDoctor: true, error: null });
+    try {
+      const response = await axiosInstance.get(
+        `${API_URL}/doctor/me`,
+        { withCredentials: true }
+      );
+      
+      set({
+        currentDoctor: response.data.data,
+        isFetchingDoctor: false
+      });
+      
+      return { success: true, data: response.data.data };
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || "Failed to fetch current doctor";
+      set({
+        isFetchingDoctor: false,
+        error: errorMessage
+      });
+      return { success: false, error: errorMessage };
     }
   },
-  
-  // WebRTC call functions remain the same
-  initiateVideoCall: (doctorId) => {
-    const { client, socket } = get();
-    if (!client || !socket) return null;
-    
-    const roomId = [client._id, doctorId].sort().join('-');
-    socket.emit('join_room', roomId);
-    
-    return roomId;
+
+  // Get all doctors with pagination and filters
+  getAllDoctors: async (params = {}) => {
+    set({ isFetchingDoctors: true, error: null });
+    try {
+      const url = `${API_URL}/doctor`;
+      
+      const response = await axiosInstance.get(url, {
+        withCredentials: true
+      });
+      
+      set({
+        doctors: response.data.data.doctors,
+        isFetchingDoctors: false
+      });
+      
+      return { 
+        success: true, 
+        data: response.data.data.doctors,
+        pagination: response.data.data.pagination
+      };
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || "Failed to fetch doctors";
+      set({
+        isFetchingDoctors: false,
+        error: errorMessage
+      });
+      toast.error(errorMessage);
+      return { success: false, error: errorMessage };
+    }
+  },
+
+  // Get doctor by ID
+  getDoctorById: async (doctorId) => {
+    set({ isFetchingDoctor: true, error: null });
+    try {
+      const response = await axiosInstance.get(
+        `${API_URL}/doctor/doctors/${doctorId}`,
+        { withCredentials: true }
+      );
+      
+      set({ isFetchingDoctor: false });
+      
+      return { success: true, data: response.data.data };
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || "Failed to fetch doctor";
+      set({
+        isFetchingDoctor: false,
+        error: errorMessage
+      });
+      return { success: false, error: errorMessage };
+    }
+  },
+
+  // Search doctors (helper function that uses getAllDoctors with search params)
+  searchDoctors: async (searchParams) => {
+    return await get().getAllDoctors(searchParams);
+  },
+
+  // Filter doctors by specialization
+  getDoctorsBySpecialization: async (specialization, otherParams = {}) => {
+    return await get().getAllDoctors({ specialization, ...otherParams });
+  },
+
+  // Get verified doctors only
+  getVerifiedDoctors: async (otherParams = {}) => {
+    return await get().getAllDoctors({ verified: 'true', ...otherParams });
   },
   
-  sendWebRTCOffer: (targetUserId, offer) => {
-    const { socket } = get();
-    if (!socket) return;
-    
-    socket.emit('webrtc_offer', { targetUserId, offer });
-  },
-  
-  sendWebRTCAnswer: (targetUserId, answer) => {
-    const { socket } = get();
-    if (!socket) return;
-    
-    socket.emit('webrtc_answer', { targetUserId, answer });
-  },
-  
-  sendICECandidate: (targetUserId, candidate) => {
-    const { socket } = get();
-    if (!socket) return;
-    
-    socket.emit('webrtc_ice_candidate', { targetUserId, candidate });
-  },
-  
-  // Helper functions
-  isUserOnline: (userId) => {
-    return get().onlineUsers.includes(userId);
-  }
 }));
 
 export default useDoctorAuthStore;

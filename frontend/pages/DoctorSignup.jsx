@@ -41,86 +41,110 @@ const DoctorSignup = () => {
     }));
   };
   
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setFormData({
-        ...formData,
-        avatar: file
-      });
-      
-      // Create preview
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setAvatarPreview(reader.result);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
+const handleFileChange = (e) => {
+  const file = e.target.files[0];
+  console.log('handleFileChange triggered, file:', file); // Log the selected file
 
-  const validateForm = () => {
-    const errors = {};
-    
-    if (!formData.name.trim()) errors.name = 'Name is required';
-    if (!formData.email.trim()) errors.email = 'Email is required';
-    else if (!/\S+@\S+\.\S+/.test(formData.email)) errors.email = 'Email is invalid';
-    
-    if (!formData.phone.trim()) errors.phone = 'Phone number is required';
-    else if (!/^\+91\d{10}$/.test(formData.phone)) {
-      errors.phone = 'Phone number must be in the format +91XXXXXXXXXX';
-    }
-        
-    if (!formData.password) errors.password = 'Password is required';
-    else if (formData.password.length < 6) errors.password = 'Password must be at least 6 characters';
-    
-    if (formData.password !== formData.confirmPassword) {
-      errors.confirmPassword = 'Passwords do not match';
-    }
-    
-    if (!formData.specialization) errors.specialization = 'Specialization is required';
-    if (!formData.experience) errors.experience = 'Experience is required';
-    if (!formData.degree) errors.degree = 'Degree is required';
-    
-    if (!formData.age) errors.age = 'Age is required';
-    else if (formData.age < 20 || formData.age > 100) errors.age = 'Age must be between 20 and 100';
-    
-    if (!formData.avatar) errors.avatar = 'Profile picture is required';
-    
-    return errors;
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    clearError();
-    setStoreError('');
-    
-    const errors = validateForm();
-    if (Object.keys(errors).length > 0) {
-      setFormErrors(errors);
-      return;
-    }
-    
-    // Create FormData for file upload
-    const data = new FormData();
-    Object.keys(formData).forEach(key => {
-      if (key !== 'confirmPassword' && formData[key] !== null) {
-        data.append(key, formData[key]);
-      }
+  if (file) {
+    setFormData({
+      ...formData,
+      avatar: file
     });
     
-    try {
-      const result = await register(data);
+    // Create preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setAvatarPreview(reader.result);
+      console.log('Avatar preview set');
+    };
+    reader.readAsDataURL(file);
+  } else {
+    console.warn('No file selected');
+  }
+};
+
+const validateForm = () => {
+  const errors = {};
+  
+  if (!formData.name.trim()) errors.name = 'Name is required';
+  if (!formData.email.trim()) errors.email = 'Email is required';
+  else if (!/\S+@\S+\.\S+/.test(formData.email)) errors.email = 'Email is invalid';
+  
+  if (!formData.phone.trim()) errors.phone = 'Phone number is required';
+  else if (!/^\+91\d{10}$/.test(formData.phone)) {
+    errors.phone = 'Phone number must be in the format +91XXXXXXXXXX';
+  }
       
-      if (result.success) {
-        setDoctorId(result.doctorId);
-        setShowVerificationModal(true);
-      } else {
-        setStoreError(result.error || 'Registration failed. Please try again.');
-      }
-    } catch (err) {
-      setStoreError('Registration failed. Please try again.');
+  if (!formData.password) errors.password = 'Password is required';
+  else if (formData.password.length < 6) errors.password = 'Password must be at least 6 characters';
+  
+  if (formData.password !== formData.confirmPassword) {
+    errors.confirmPassword = 'Passwords do not match';
+  }
+  
+  if (!formData.specialization) errors.specialization = 'Specialization is required';
+  if (!formData.experience) errors.experience = 'Experience is required';
+  if (!formData.degree) errors.degree = 'Degree is required';
+  
+  if (!formData.age) errors.age = 'Age is required';
+  else if (formData.age < 20 || formData.age > 100) errors.age = 'Age must be between 20 and 100';
+  
+  if (!formData.avatar) {
+    errors.avatar = 'Profile picture is required';
+    console.error('Validation error: avatar is missing');
+  }
+  
+  console.log('Validation errors:', errors);
+  return errors;
+};
+
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  clearError();
+  setStoreError('');
+  
+  console.log('Submitting form with data:', formData);
+  
+  const errors = validateForm();
+  if (Object.keys(errors).length > 0) {
+    console.warn('Form validation failed:', errors);
+    setFormErrors(errors);
+    return;
+  }
+  
+  // Create FormData for file upload
+  const data = new FormData();
+  console.log("Sending FormData:");
+for (let [key, value] of data.entries()) {
+  console.log(`${key}:`, value);
+  if (key === 'avatar') {
+    console.log('avatar is File?', value instanceof File);
+    console.log('avatar name:', value.name);
+  }
+}
+  Object.keys(formData).forEach(key => {
+    if (key !== 'confirmPassword' && formData[key] !== null) {
+      data.append(key, formData[key]);
     }
-  };
+  });
+  console.log('FormData entries:', Array.from(data.entries()));
+
+  try {
+    const result = await register(data);
+    console.log('Register API result:', result);
+    
+    if (result.success) {
+      setDoctorId(result.doctorId);
+      setShowVerificationModal(true);
+    } else {
+      setStoreError(result.error || 'Registration failed. Please try again.');
+    }
+  } catch (err) {
+    console.error('Registration error:', err);
+    setStoreError('Registration failed. Please try again.');
+  }
+};
+
 
   const handleVerifyOtp = async () => {
     if (!otp || otp.length !== 6) {

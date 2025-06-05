@@ -162,7 +162,7 @@ const ClientSignup = () => {
 
       const result = await verifyEmail(formData.email, emailCode);
       if (result.success) {
-        navigate("/clientsignup");
+        navigate("/clientdashboard");
       } else {
         setFormErrors({
           ...formErrors,

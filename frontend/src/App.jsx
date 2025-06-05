@@ -9,10 +9,10 @@ import ClientDashboard from '../pages/ClientDashboard';
 import HomePage from '../pages/HomePage';
 import DoctorProfile from '../components/DoctorProfile';
 import DoctorAppointments from '../components/doctorAppointments';
-import DoctorSchedule from '../components/DoctorSchedules';
 import DoctorDirectory from '../components/Doctordirectory';
-import ChatPage from '../components/ChatPage';
-
+import ChatPage from '../pages/ChatPage';
+import ClientProfile from '../components/ClientProfile';
+import VideoCallPage from '../pages/VideoPage';
 function App() {
   
   return (
@@ -27,9 +27,10 @@ function App() {
             <Route path="/clientdashboard" element={<ClientDashboard/>}/>
             <Route path='/doctorprofile' element={<DoctorProfile/>}/>
             <Route path='/doctorappointments' element={<DoctorAppointments/>}/>
-            <Route path='/doctorschedule' element={<DoctorSchedule/>}/>
             <Route path='/doctordirectory' element={<DoctorDirectory/>}/>
-            <Route path="/chats" element={<ChatPage />} />
+            <Route path="/chat" element={<ChatPage />} />
+            <Route path="/clientprofile" element={<ClientProfile />} />
+            <Route path="/video-call" element={<VideoCallPage />} />
           </Routes>
         </div>
       </Router>

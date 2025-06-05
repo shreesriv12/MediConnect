@@ -2,9 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import DoctorDashboardNavbar from '../components/DoctorDahboardNavbar';
 import ChatBot from '../components/ChatBot';
-import useClientAuthStore from '../store/clientAuthStore';
+import useDoctorAuthStore from '../store/doctorAuthStore';
 const DoctorDashboard = () => {
-  const { isAuthenticated, isCheckingAuth, checkAuth } = useClientAuthStore();
+  const { isAuthenticated, isCheckingAuth, checkAuth } = useDoctorAuthStore();
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

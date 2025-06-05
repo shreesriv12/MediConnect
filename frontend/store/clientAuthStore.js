@@ -1,12 +1,13 @@
 import { create } from "zustand";
-import { io } from "socket.io-client";
 import toast from "react-hot-toast";
 import { axiosInstance } from "../utils/axois";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
-const useClientAuthStore = create((set, get) => ({
+const useClientAuthStore = create((set) => ({
   client: null,
+  clients: [],
+  currentClient: null,
   isLoading: false,
   error: null,
   isAuthenticated: false,
@@ -14,8 +15,8 @@ const useClientAuthStore = create((set, get) => ({
   isLoggingIn: false,
   isUpdatingProfile: false,
   isCheckingAuth: true,
-  onlineUsers: [],
-  socket: null,
+  isFetchingClients: false,
+  isFetchingClient: false,
   
   clearError: () => set({ error: null }),
   
@@ -24,27 +25,23 @@ const useClientAuthStore = create((set, get) => ({
     try {
       // Use withCredentials to ensure cookies are sent/received
       const response = await axiosInstance.post(`${API_URL}/client/register`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
         withCredentials: true
       });
       
-      // Store client data - cookies are automatically handled by the browser
       const clientData = response.data.data;
       
-      // Only store non-sensitive user info in localStorage if needed for UI
+      // Store doctor ID in localStorage for UI persistence
       localStorage.setItem("clientId", clientData._id);
       
       set({ 
         isSigningUp: false, 
         client: clientData,
-        isAuthenticated: true 
+        isAuthenticated: true
       });
       
       toast.success("Account created successfully! Please verify your OTP.");
       
-      // Connect socket after registration if user is already verified
-      if (clientData.verified) {
-        get().connectSocket();
-      }
       
       return { success: true, clientId: clientData._id };
     } catch (error) {
@@ -68,15 +65,18 @@ const useClientAuthStore = create((set, get) => ({
         { withCredentials: true }
       );
       
+      const { accessToken, refreshToken } = response.data;
+      
+      // Store tokens in localStorage if returned after OTP verification
+      if (accessToken) localStorage.setItem("clientAccessToken", accessToken);
+      if (refreshToken) localStorage.setItem("clientRefreshToken", refreshToken);
+      
       // After OTP verification, tokens are set as HTTP-only cookies by the backend
       set({ 
         isLoading: false,
         isAuthenticated: true 
       });
-      
-      // Connect socket after verification
-      get().connectSocket();
-      
+          
       toast.success("OTP verified successfully!");
       return { success: true };
     } catch (error) {
@@ -100,6 +100,12 @@ const useClientAuthStore = create((set, get) => ({
         { withCredentials: true }
       );
       
+      const { accessToken, refreshToken } = response.data;
+      
+      // Store tokens in localStorage if returned
+      if (accessToken) localStorage.setItem("clientAccessToken", accessToken);
+      if (refreshToken) localStorage.setItem("clientRefreshToken", refreshToken);
+      
       set({ isLoading: false });
       toast.success("Email verified successfully!");
       return { success: true, message: response.data.data.message };
@@ -114,7 +120,7 @@ const useClientAuthStore = create((set, get) => ({
     }
   },
   
-  login: async (credentials) => {
+ login: async (credentials) => {
     set({ isLoggingIn: true, error: null });
     try {
       // Always use withCredentials to ensure cookies are sent/received
@@ -124,10 +130,12 @@ const useClientAuthStore = create((set, get) => ({
         { withCredentials: true }
       );
   
-      const { client } = response.data.data;
+      const { client, accessToken, refreshToken } = response.data.data;
       
-      // Store minimal user info in localStorage
+      // Store doctor info and tokens in localStorage
       localStorage.setItem("clientId", client._id);
+      if (accessToken) localStorage.setItem("clientAccessToken", accessToken);
+      if (refreshToken) localStorage.setItem("clientRefreshToken", refreshToken);
   
       set({
         isLoggingIn: false,
@@ -136,7 +144,6 @@ const useClientAuthStore = create((set, get) => ({
       });
   
       toast.success("Logged in successfully!");
-      get().connectSocket();
       return { success: true };
     } catch (error) {
       const errorMessage = error.response?.data?.message || "Login failed";
@@ -149,6 +156,7 @@ const useClientAuthStore = create((set, get) => ({
       return { success: false, error: errorMessage };
     }
   },
+
   
   logout: async () => {
     set({ isLoading: true, error: null });
@@ -160,8 +168,10 @@ const useClientAuthStore = create((set, get) => ({
         { withCredentials: true }
       );
       
-      // Remove any client data from localStorage
+      // Remove all client data and tokens from localStorage
       localStorage.removeItem("clientId");
+      localStorage.removeItem("clientAccessToken");
+      localStorage.removeItem("clientRefreshToken");
       
       set({ 
         isLoading: false, 
@@ -169,14 +179,15 @@ const useClientAuthStore = create((set, get) => ({
         isAuthenticated: false 
       });
       
-      get().disconnectSocket();
       toast.success("Logged out successfully!");
       return { success: true };
     } catch (error) {
       const errorMessage = error.response?.data?.message || "Logout failed";
       
-      // Even if logout API fails, clear local state
+      // Even if logout API fails, clear local state and tokens
       localStorage.removeItem("clientId");
+      localStorage.removeItem("clientAccessToken");
+      localStorage.removeItem("clientRefreshToken");
       
       set({ 
         isLoading: false, 
@@ -185,130 +196,152 @@ const useClientAuthStore = create((set, get) => ({
         isAuthenticated: false
       });
       
-      get().disconnectSocket();
       toast.error(errorMessage);
       return { success: false };
     }
   },
   
-  checkAuth: async () => {
-    set({ isCheckingAuth: true });
+   checkAuth: async () => {
+     set({ isCheckingAuth: true });
+     try {
+       // Use withCredentials to ensure cookies are sent/received
+       const response = await axiosInstance.get(
+         `${API_URL}/client/me`, 
+         { withCredentials: true }
+       );
+       
+       set({ 
+         client: response.data.data,
+         isAuthenticated: true
+       });
+       
+       return { success: true };
+     } catch (error) {
+       console.log("Error in checkAuth:", error);
+       
+       // Clear any stored doctor data if authentication check fails
+       localStorage.removeItem("clientId");
+       localStorage.removeItem("clientAccessToken");
+       localStorage.removeItem("clientRefreshToken");
+       
+       set({ 
+         client: null,
+         isAuthenticated: false
+       });
+       
+       return { success: false };
+     } finally {
+       set({ isCheckingAuth: false });
+     }
+   },
+  // Get current client details (for authenticated user)
+  getCurrentClient: async () => {
+    set({ isFetchingClient: true, error: null });
     try {
-      // Use withCredentials to ensure cookies are sent/received
       const response = await axiosInstance.get(
-        `${API_URL}/client/me`, 
+        `${API_URL}/client/me`,
         { withCredentials: true }
       );
       
-      set({ 
-        client: response.data.data,
-        isAuthenticated: true
+      set({
+        currentClient: response.data.data,
+        isFetchingClient: false
       });
       
-      get().connectSocket();
-      return { success: true };
+      return { success: true, data: response.data.data };
     } catch (error) {
-      console.log("Error in checkAuth:", error);
-      
-      // Clear any stored client data if authentication check fails
-      localStorage.removeItem("clientId");
-      
-      set({ 
-        client: null,
-        isAuthenticated: false
+      const errorMessage = error.response?.data?.message || "Failed to fetch current client";
+      set({
+        isFetchingClient: false,
+        error: errorMessage
       });
-      
-      return { success: false };
-    } finally {
-      set({ isCheckingAuth: false });
+      return { success: false, error: errorMessage };
     }
   },
-  
-  connectSocket: () => {
-    const { client, socket } = get();
-    if (!client || socket?.connected) return;
-  
-    const newSocket = io(API_URL, {
-      transports: ["websocket", "polling"],
+
+  // Get all clients with pagination and filters
+  getAllClients: async (params = {}) => {
+  set({ isFetchingClients: true, error: null });
+  try {
+const url = new URL(`${API_URL}/client`);
+    
+    // Append query params if any
+    Object.entries(params).forEach(([key, value]) => {
+      url.searchParams.append(key, value);
+    });
+
+    const response = await axiosInstance.get(url.toString(), {
       withCredentials: true,
     });
-  
-    // Handle successful connection
-    newSocket.on("connect", () => {
-      console.log("Socket connected:", newSocket.id);
-  
-      // Emit user_online only after connected
-      newSocket.emit("user_online", client._id);
+
+    set({
+      clients: response.data.data.clients,
+      isFetchingClients: false,
     });
-  
-    // Store socket instance
-    set({ socket: newSocket });
-  
-    // Event listeners
-    newSocket.on("getOnlineUsers", (ids) => set({ onlineUsers: ids }));
-    newSocket.on("update_online_users", (users) => set({ onlineUsers: users }));
-    newSocket.on("new_notification", (message) => {
-      toast.success(message);
-    });
-    newSocket.on("connect_error", (err) => {
-      console.error("Socket connection error:", err);
-      toast.error("Connection issue. Will try again soon.");
-    });
-  
-    return () => {
-      newSocket.off("getOnlineUsers");
-      newSocket.off("update_online_users");
-      newSocket.off("new_notification");
-      newSocket.off("connect_error");
-      newSocket.off("connect");
+
+    return {
+      success: true,
+      data: response.data.data.clients,
+      pagination: response.data.data.pagination,
     };
-  },
-  
-  
-  disconnectSocket: () => {
-    const { socket } = get();
-    if (socket?.connected) {
-      socket.disconnect();
-      set({ socket: null });
+  } catch (error) {
+    const errorMessage = error.response?.data?.message || "Failed to fetch clients";
+    set({
+      isFetchingClients: false,
+      error: errorMessage,
+    });
+    toast.error(errorMessage);
+    return { success: false, error: errorMessage };
+  }
+},
+
+
+  // Get client by ID
+  getClientById: async (clientId) => {
+    set({ isFetchingClient: true, error: null });
+    try {
+      const response = await axiosInstance.get(
+        `${API_URL}/client/${clientId}`,
+        { withCredentials: true }
+      );
+      
+      set({ isFetchingClient: false });
+      
+      return { success: true, data: response.data.data };
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || "Failed to fetch client";
+      set({
+        isFetchingClient: false,
+        error: errorMessage
+      });
+      return { success: false, error: errorMessage };
     }
   },
-  
-  // WebRTC call functions remain the same
-  initiateVideoCall: (doctorId) => {
-    const { client, socket } = get();
-    if (!client || !socket) return null;
+
+  // Update client profile
+updateProfile: async (formData) => {
+  set({ isLoading: true, error: null });
+  console.log("Updating profile with data:", formData);
+  try {
+    const response = await axiosInstance.patch(
+      `${API_URL}/client/update`, 
+      formData, 
+      { withCredentials: true }
+    );
     
-    const roomId = [client._id, doctorId].sort().join('-');
-    socket.emit('join_room', roomId);
-    
-    return roomId;
-  },
-  
-  sendWebRTCOffer: (targetUserId, offer) => {
-    const { socket } = get();
-    if (!socket) return;
-    
-    socket.emit('webrtc_offer', { targetUserId, offer });
-  },
-  
-  sendWebRTCAnswer: (targetUserId, answer) => {
-    const { socket } = get();
-    if (!socket) return;
-    
-    socket.emit('webrtc_answer', { targetUserId, answer });
-  },
-  
-  sendICECandidate: (targetUserId, candidate) => {
-    const { socket } = get();
-    if (!socket) return;
-    
-    socket.emit('webrtc_ice_candidate', { targetUserId, candidate });
-  },
-  
-  // Helper functions
-  isUserOnline: (userId) => {
-    return get().onlineUsers.includes(userId);
+    set({ isLoading: false, client: response.data.data });
+    toast.success("Profile updated successfully!");
+    return { success: true };
+  } catch (error) {
+    const errorMessage = error.response?.data?.message || "Profile update failed";
+    set({ isLoading: false, error: errorMessage });
+    toast.error(errorMessage);
+    return { success: false, error: errorMessage };
   }
+},
+
+
+ 
 }));
 
 export default useClientAuthStore;
