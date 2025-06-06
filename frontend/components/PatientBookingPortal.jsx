@@ -14,10 +14,10 @@ import {
   MapPin,
   CheckCircle,
   XCircle,
-  AlertCircle
+  AlertCircle,
+  CreditCard
 } from 'lucide-react';
 import useClientAuthStore from '../store/clientAuthStore';
-
 
 const PatientBookingPortal = () => {
   const [currentView, setCurrentView] = useState('doctors'); // 'doctors' or 'booking'
@@ -29,9 +29,28 @@ const PatientBookingPortal = () => {
   const [selectedDate, setSelectedDate] = useState('');
   const [message, setMessage] = useState({ text: '', type: '' });
   const [bookingLoading, setBookingLoading] = useState(false);
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [pendingSlotRequest, setPendingSlotRequest] = useState(null);
 
-  // Mock patient data - in real app, get from auth store
-  const {getCurrentClient} = useClientAuthStore();
+  const { getCurrentClient } = useClientAuthStore();
+
+  // Load Razorpay script
+  const loadRazorpayScript = () => {
+    return new Promise((resolve) => {
+      const existingScript = document.getElementById('razorpay-script');
+      if (existingScript) {
+        resolve(true);
+        return;
+      }
+
+      const script = document.createElement('script');
+      script.id = 'razorpay-script';
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
 
   // Fetch all doctors
   const fetchDoctors = async () => {
@@ -78,11 +97,8 @@ const PatientBookingPortal = () => {
     }
   };
 
-
   // Request a slot
-  const requestSlot = async (scheduleId, slotIndex) => {
-    console.log(localStorage.getItem('clientAccessToken'));
-
+  const requestSlot = async (scheduleId, slotIndex, slotFee) => {
     try {
       setBookingLoading(true);
       const response = await fetch('http://localhost:5000/slots/request', {
@@ -101,7 +117,17 @@ const PatientBookingPortal = () => {
       const data = await response.json();
       
       if (data.success) {
-        setMessage({ text: 'Slot request sent successfully! Waiting for doctor approval.', type: 'success' });
+        // Store the slot request for payment
+        setPendingSlotRequest({
+          requestId: data.request._id,
+          amount: slotFee,
+          doctorName: selectedDoctor.name,
+          date: selectedDate,
+          time: doctorSchedules[0].slots[slotIndex].time
+        });
+        
+        setMessage({ text: 'Slot requested successfully! Please proceed with payment.', type: 'success' });
+        
         // Refresh the schedule
         if (selectedDate) {
           const updatedSchedule = await fetchDoctorSchedule(selectedDoctor._id, selectedDate);
@@ -120,6 +146,159 @@ const PatientBookingPortal = () => {
     }
   };
 
+  // Create Razorpay order
+  const createRazorpayOrder = async (slotRequestId, amount) => {
+    try {
+      const response = await fetch('http://localhost:5000/payments/order', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          slotRequestId,
+          amount
+        })
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        return data.order;
+      } else {
+        throw new Error(data.message || 'Failed to create payment order');
+      }
+    } catch (error) {
+      console.error('Error creating order:', error);
+      throw error;
+    }
+  };
+
+  // Verify payment
+  const verifyPayment = async (paymentData) => {
+    try {
+      const response = await fetch('http://localhost:5000/payments/verify', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(paymentData)
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        return data;
+      } else {
+        throw new Error(data.message || 'Payment verification failed');
+      }
+    } catch (error) {
+      console.error('Error verifying payment:', error);
+      throw error;
+    }
+  };
+
+  // Handle Razorpay payment
+  const handlePayment = async () => {
+    if (!pendingSlotRequest) return;
+
+    try {
+      setPaymentLoading(true);
+      
+      // Load Razorpay script
+      const scriptLoaded = await loadRazorpayScript();
+      if (!scriptLoaded) {
+        throw new Error('Failed to load Razorpay SDK');
+      }
+
+      // Create order
+      const order = await createRazorpayOrder(pendingSlotRequest.requestId, pendingSlotRequest.amount);
+      
+      // Get current client info
+      const currentClient = getCurrentClient();
+      
+      // Razorpay options
+      const options = {
+        key: import.meta.env.REACT_APP_RAZORPAY_KEY_ID||'rzp_test_ijfoNq8YTvc5iK',
+        amount: order.amount,
+        currency: order.currency,
+        name: 'Healthcare Booking',
+        description: `Appointment with Dr. ${pendingSlotRequest.doctorName}`,
+        order_id: order.id,
+        handler: async function (response) {
+          try {
+            // Verify payment on backend
+            const verificationData = {
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+              slotRequestId: pendingSlotRequest.requestId
+            };
+
+            const verificationResult = await verifyPayment(verificationData);
+            
+            if (verificationResult.success) {
+              setMessage({ 
+                text: 'Payment successful! Your appointment has been confirmed.', 
+                type: 'success' 
+              });
+              
+              // Clear pending request
+              setPendingSlotRequest(null);
+              
+              // Refresh schedule
+              if (selectedDate) {
+                const updatedSchedule = await fetchDoctorSchedule(selectedDoctor._id, selectedDate);
+                if (updatedSchedule) {
+                  setDoctorSchedules([updatedSchedule]);
+                }
+              }
+            }
+          } catch (error) {
+            console.error('Payment verification error:', error);
+            setMessage({ 
+              text: 'Payment completed but verification failed. Please contact support.', 
+              type: 'error' 
+            });
+          }
+        },
+        prefill: {
+          name: currentClient?.name || '',
+          email: currentClient?.email || '',
+          contact: currentClient?.phone || ''
+        },
+        notes: {
+          slotRequestId: pendingSlotRequest.requestId,
+          doctorId: selectedDoctor._id,
+          date: pendingSlotRequest.date,
+          time: pendingSlotRequest.time
+        },
+        theme: {
+          color: '#3B82F6'
+        },
+        modal: {
+          ondismiss: function () {
+            setMessage({ 
+              text: 'Payment cancelled. You can retry payment anytime.', 
+              type: 'error' 
+            });
+          }
+        }
+      };
+
+      const razorpay = new window.Razorpay(options);
+      razorpay.open();
+
+    } catch (error) {
+      console.error('Payment error:', error);
+      setMessage({ 
+        text: error.message || 'Payment failed. Please try again.', 
+        type: 'error' 
+      });
+    } finally {
+      setPaymentLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchDoctors();
   }, []);
@@ -130,11 +309,13 @@ const PatientBookingPortal = () => {
     setCurrentView('booking');
     setSelectedDate('');
     setDoctorSchedules([]);
+    setPendingSlotRequest(null);
   };
 
   // Handle date selection and fetch schedule
   const handleDateSelect = async (date) => {
     setSelectedDate(date);
+    setPendingSlotRequest(null);
     if (selectedDoctor && date) {
       const schedule = await fetchDoctorSchedule(selectedDoctor._id, date);
       if (schedule) {
@@ -190,6 +371,62 @@ const PatientBookingPortal = () => {
           }`}>
             {message.type === 'success' ? <CheckCircle size={20} /> : <XCircle size={20} />}
             {message.text}
+          </div>
+        )}
+
+        {/* Payment Pending Card */}
+        {pendingSlotRequest && (
+          <div className="mb-6 max-w-2xl mx-auto">
+            <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border-2 border-yellow-200 rounded-2xl p-6 shadow-lg">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 bg-yellow-500 rounded-full flex items-center justify-center">
+                  <CreditCard className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">Payment Required</h3>
+                  <p className="text-sm text-gray-600">Complete payment to confirm your appointment</p>
+                </div>
+              </div>
+              
+              <div className="bg-white rounded-xl p-4 mb-4">
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-gray-500">Doctor:</span>
+                    <p className="font-semibold">Dr. {pendingSlotRequest.doctorName}</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Amount:</span>
+                    <p className="font-semibold text-green-600">${pendingSlotRequest.amount}</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Date:</span>
+                    <p className="font-semibold">{pendingSlotRequest.date}</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Time:</span>
+                    <p className="font-semibold">{pendingSlotRequest.time}</p>
+                  </div>
+                </div>
+              </div>
+              
+              <button
+                onClick={handlePayment}
+                disabled={paymentLoading}
+                className="w-full bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+              >
+                {paymentLoading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <div className="w-5 h-5 border-2 border-white rounded-full animate-spin border-t-transparent"></div>
+                    Processing Payment...
+                  </span>
+                ) : (
+                  <span className="flex items-center justify-center gap-2">
+                    <CreditCard size={20} />
+                    Pay ${pendingSlotRequest.amount} - Confirm Appointment
+                  </span>
+                )}
+              </button>
+            </div>
           </div>
         )}
 
@@ -329,7 +566,10 @@ const PatientBookingPortal = () => {
           <div className="max-w-4xl mx-auto">
             {/* Back Button */}
             <button
-              onClick={() => setCurrentView('doctors')}
+              onClick={() => {
+                setCurrentView('doctors');
+                setPendingSlotRequest(null);
+              }}
               className="mb-6 flex items-center gap-2 text-blue-600 hover:text-blue-800 font-medium transition-colors"
             >
               <ArrowLeft size={20} />
@@ -431,7 +671,7 @@ const PatientBookingPortal = () => {
                               
                               {isAvailable && (
                                 <button
-                                  onClick={() => requestSlot(doctorSchedules[0]._id, index)}
+                                  onClick={() => requestSlot(doctorSchedules[0]._id, index, slot.fee)}
                                   disabled={bookingLoading}
                                   className="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 disabled:bg-blue-300 transition-colors font-medium"
                                 >
@@ -459,16 +699,8 @@ const PatientBookingPortal = () => {
                     <h4 className="text-lg font-medium mb-2">No Schedule Available</h4>
                     <p>Dr. {selectedDoctor.name} hasn't set up any appointments for this date.</p>
                     <p className="text-sm mt-2">Please try a different date or contact the doctor directly.</p>
-                  </div>
+                         </div>
                 )}
-              </div>
-            )}
-
-            {!selectedDate && (
-              <div className="text-center py-12 text-gray-500">
-                <Calendar className="mx-auto mb-4" size={64} />
-                <h4 className="text-xl font-medium mb-2">Select a Date</h4>
-                <p>Choose a date above to view available appointment slots.</p>
               </div>
             )}
           </div>
