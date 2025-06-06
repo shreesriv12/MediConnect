@@ -129,22 +129,23 @@ app.use((req, res, next) => {
 // === Route Imports ===
 import doctorRouter from './src/routes/doctor.routes.js';
 import clientRouter from './src/routes/client.routes.js';
-import scheduleRouter from './src/routes/schedule.routes.js';
 import chatRouter from './src/routes/chat.routes.js';
 import videoCallRouter from './src/routes/video.routes.js'; 
 import medicineRoutes from './src/routes/medicine.routes.js';
-
+import scheduleRoutes from './src/routes/schedule.routes.js';
+import slotRequestRoutes from './src/routes/slotRequest.routes.js'
+import paymentRoutes from './src/routes/payment.routes.js'
 
 // === Route Usage ===
 app.use("/doctor", doctorRouter);
 app.use("/client", clientRouter);
-app.use("/schedule", scheduleRouter);
+app.use("/schedule", scheduleRoutes);
 app.use("/chats", chatRouter);
 app.use("/video-call", videoCallRouter);
 app.use("/clinics", clinicRoutes); 
 app.use("/medicines", medicineRoutes);
-
-
+app.use('/slots', slotRequestRoutes);
+app.use('/payments', paymentRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
