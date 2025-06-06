@@ -910,6 +910,7 @@ const handleReceiveAnswer = async (data) => {
 
 // 6. FIXED: Enhanced call initiation with better error handling
 const handleInitiateCall = async () => {
+  
   if (!selectedContact || !socketRef.current || !socketRef.current.connected) {
     console.error('Cannot initiate call: missing contact or socket connection');
     setError('Cannot start call - no connection to server');

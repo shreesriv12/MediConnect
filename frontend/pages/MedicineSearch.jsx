@@ -96,15 +96,17 @@ export default function MedicineSearch() {
         <div className="bg-white rounded-2xl shadow-xl p-6 mb-8">
           <div className="relative mb-4">
             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-              <Search className="h-5 w-5 text-gray-400" />
+              <Search className="h-5 w-5 text-black" />
             </div>
-            <input
-              type="text"
-              placeholder="Enter medicine name (e.g., Paracetamol, Aspirin...)"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              className="w-full pl-12 pr-12 py-4 text-lg border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 outline-none"
-            />
+          <input
+  type="text"
+  placeholder="Enter medicine name (e.g., Paracetamol, Aspirin...)"
+  value={query}
+  onChange={(e) => setQuery(e.target.value)}
+  className="w-full pl-12 pr-12 py-4 text-lg border-2 border-gray-200 rounded-xl 
+             focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all 
+             duration-200 outline-none text-black placeholder-black" 
+/>
             {query && (
               <button
                 onClick={clearSearch}
@@ -217,7 +219,7 @@ export default function MedicineSearch() {
                             </div>
                           </td>
                           <td className="px-6 py-4">
-                            <div className="text-sm space-y-1">
+                            <div className="text-sm text-black space-y-1">
                               {med.short_composition1 && (
                                 <div className="flex items-center">
                                   <FileText className="w-3 h-3 text-gray-400 mr-1" />
@@ -226,7 +228,7 @@ export default function MedicineSearch() {
                               )}
                               {med.short_composition2 && (
                                 <div className="flex items-center">
-                                  <FileText className="w-3 h-3 text-gray-400 mr-1" />
+                                  <FileText className="w-3 h-3 text-gray-400 font-black mr-1" />
                                   {med.short_composition2}
                                 </div>
                               )}

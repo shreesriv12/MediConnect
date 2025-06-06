@@ -15,6 +15,9 @@ import ClientProfile from '../components/ClientProfile';
 import VideoCallPage from '../pages/VideoPage';
 import NearbyClinicsMap from '../components/NearbyClinicMap';
 import MedicineSearch from '../pages/MedicineSearch';
+import AllDoctorsPage from '../components/GetDoctor';
+import ScheduleManagement from '../components/DoctorSchedue';
+import PatientBookingPortal from '../components/PatientBookingPortal';
 function App() {
   
   return (
@@ -35,6 +38,9 @@ function App() {
             <Route path="/video-call" element={<VideoCallPage />} />
             <Route path="/nearby-clinics" element={<NearbyClinicsMap />} />
             <Route path="/medicines-search" element={<MedicineSearch />} />
+            <Route path="/finddoctors" element={<AllDoctorsPage />} />
+            <Route path="/doctorschedule" element={<ScheduleManagement />} />
+            <Route path="/bookappointment" element={<PatientBookingPortal />} />
             {/* Redirect to home if no route matches */}
           </Routes>
         </div>
