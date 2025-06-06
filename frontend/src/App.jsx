@@ -8,7 +8,6 @@ import useDoctorAuthStore from '../store/doctorAuthStore';
 import ClientDashboard from '../pages/ClientDashboard';
 import HomePage from '../pages/HomePage';
 import DoctorProfile from '../components/DoctorProfile';
-import DoctorAppointments from '../components/doctorAppointments';
 import DoctorDirectory from '../components/Doctordirectory';
 import ChatPage from '../pages/ChatPage';
 import ClientProfile from '../components/ClientProfile';
@@ -18,6 +17,7 @@ import MedicineSearch from '../pages/MedicineSearch';
 import AllDoctorsPage from '../components/GetDoctor';
 import ScheduleManagement from '../components/DoctorSchedue';
 import PatientBookingPortal from '../components/PatientBookingPortal';
+import DoctorPaymentPortal from '../components/DoctorPayementPortal';
 function App() {
   
   return (
@@ -31,7 +31,7 @@ function App() {
             <Route path="/doctordashboard" element={<DoctorDashboard /> } />
             <Route path="/clientdashboard" element={<ClientDashboard/>}/>
             <Route path='/doctorprofile' element={<DoctorProfile/>}/>
-            <Route path='/doctorappointments' element={<DoctorAppointments/>}/>
+            <Route path='/doctorappointments' element={<DoctorPaymentPortal/>}/>
             <Route path='/doctordirectory' element={<DoctorDirectory/>}/>
             <Route path="/chat" element={<ChatPage />} />
             <Route path="/clientprofile" element={<ClientProfile />} />
