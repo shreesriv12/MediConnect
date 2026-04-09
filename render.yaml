@@ -1,0 +1,45 @@
+# Render.yaml - One-Click Deployment Configuration
+# Place this in root directory and Render will auto-detect it
+
+# Documentation: https://render.com/docs/yaml-spec
+
+services:
+  - type: web
+    name: mediconnect-backend
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node app.js
+    preDeployCommand: npm run build 2>/dev/null || true
+    
+    # Health check endpoint
+    healthCheckPath: /
+    healthCheckInterval: 30
+    healthCheckTimeout: 10
+    
+    # Environment variables (set these in Render dashboard)
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+      # Note: Sensitive variables (API keys, passwords) should be set in Render dashboard,
+      # NOT in this file. This file is for public repo-safe configuration only.
+    
+    # Regions (choose one closest to your users)
+    # Available: us-west, us-south, us-east, eu-west, eu-central, ap-south, ap-northeast, ap-southeast
+    region: us-east
+    
+    # Auto-deploy on push to main
+    autoDeploy: true
+    
+    # Maximum instances (free plan allows 1)
+    scaling:
+      minInstances: 1
+      maxInstances: 1
+    
+    # Disk (free plan: 1GB)
+    disk:
+      name: data
+      mountPath: /var/data
+      sizeGB: 1

@@ -144,7 +144,6 @@ const videoCallSchema = new mongoose.Schema({
 
 // Index for efficient queries
 videoCallSchema.index({ 'participants.userId': 1, callStatus: 1 });
-videoCallSchema.index({ roomId: 1 });
 videoCallSchema.index({ createdAt: -1 });
 videoCallSchema.index({ 'participants.userId': 1, createdAt: -1 });
 

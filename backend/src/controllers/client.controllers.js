@@ -85,9 +85,12 @@ const loginClient = asyncHandler(async (req, res) => {
   // Fetch user again without sensitive data
   const loggedUserFromDB = await Client.findById(client._id).select("-password -refreshToken");
 
+  // For development, secure should be false. For production, it should be true
+  const isProduction = process.env.NODE_ENV === 'production';
   const cookieOptions = {
     httpOnly: true,
-    secure: true,
+    secure: isProduction,
+    sameSite: 'lax'
   };
 
   // Return Logged In User and Tokens
@@ -159,8 +162,14 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
   if (!client || incomingToken !== client.refreshToken) throw new ApiError(401, "Invalid or expired refresh token");
 
   const { accessToken, refreshToken } = await generateAccessRefreshTokens(client._id);
-  return res.status(200).cookie("accessToken", accessToken, { httpOnly: true, secure: true })
-    .cookie("refreshToken", refreshToken, { httpOnly: true, secure: true })
+  
+  // For development, secure should be false. For production, it should be true
+  const isProduction = process.env.NODE_ENV === 'production';
+  const cookieOptions = { httpOnly: true, secure: isProduction, sameSite: 'lax' };
+  
+  return res.status(200)
+    .cookie("accessToken", accessToken, cookieOptions)
+    .cookie("refreshToken", refreshToken, cookieOptions)
     .json(new ApiResponse(200, { accessToken, refreshToken }, "Token refreshed"));
 });
 
@@ -186,8 +195,9 @@ const verifyOtp = asyncHandler(async (req, res) => {
   const accessToken = jwt.sign({ _id: client._id }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: process.env.ACCESS_TOKEN_EXPIRY });
   const refreshToken = jwt.sign({ _id: client._id }, process.env.REFRESH_TOKEN_SECRET, { expiresIn: process.env.REFRESH_TOKEN_EXPIRY});
 
-  // Set secure cookies
-  const cookieOptions = { httpOnly: true, secure: true };
+  // For development, secure should be false. For production, it should be true
+  const isProduction = process.env.NODE_ENV === 'production';
+  const cookieOptions = { httpOnly: true, secure: isProduction, sameSite: 'lax' };
 
   return res
     .status(200)

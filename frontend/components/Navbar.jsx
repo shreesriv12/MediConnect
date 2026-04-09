@@ -12,34 +12,37 @@ const Navbar = () => {
   return (
     <>
       <nav className={`${theme === 'dark' ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'} shadow-md fixed w-full z-50 transition-colors duration-300`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex">
-              <div className="flex-shrink-0 flex items-center">
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.5 }}
-                >
-                  <span className={`${theme === 'dark' ? 'text-blue-400' : 'text-primary'} text-2xl font-bold`}>MediConnect</span>
-                </motion.div>
-              </div>
-              <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
-                <a href="#home" className={`border-transparent ${theme === 'dark' ? 'text-white' : 'text-gray-900'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
-                  Home
-                </a>
-                <a href="#services" className={`border-transparent ${theme === 'dark' ? 'text-gray-300 hover:text-white' : 'text-gray-500 hover:text-gray-700'} hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
-                  Services
-                </a>
-                <a href="#about" className={`border-transparent ${theme === 'dark' ? 'text-gray-300 hover:text-white' : 'text-gray-500 hover:text-gray-700'} hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
-                  About Us
-                </a>
-                <a href="#contact" className={`border-transparent ${theme === 'dark' ? 'text-gray-300 hover:text-white' : 'text-gray-500 hover:text-gray-700'} hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
-                  Contact
-                </a>
-              </div>
+        <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
+          <div className="flex justify-between items-center h-14 sm:h-16">
+            {/* Logo */}
+            <div className="flex-shrink-0 flex items-center">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.5 }}
+              >
+                <span className={`${theme === 'dark' ? 'text-blue-400' : 'text-primary'} text-xl sm:text-2xl font-bold truncate`}>MediConnect</span>
+              </motion.div>
             </div>
-            <div className="flex items-center space-x-4">
+            
+            {/* Desktop Navigation */}
+            <div className="hidden sm:ml-6 sm:flex sm:space-x-6 md:space-x-8">
+              <a href="#home" className={`border-transparent ${theme === 'dark' ? 'text-white' : 'text-gray-900'} inline-flex items-center px-1 pt-1 border-b-2 text-sm md:text-base font-medium hover:text-primary transition-colors`}>
+                Home
+              </a>
+              <a href="#services" className={`border-transparent ${theme === 'dark' ? 'text-gray-300 hover:text-white' : 'text-gray-500 hover:text-gray-700'} hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm md:text-base font-medium transition-colors`}>
+                Services
+              </a>
+              <a href="#about" className={`border-transparent ${theme === 'dark' ? 'text-gray-300 hover:text-white' : 'text-gray-500 hover:text-gray-700'} hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm md:text-base font-medium transition-colors`}>
+                About Us
+              </a>
+              <a href="#contact" className={`border-transparent ${theme === 'dark' ? 'text-gray-300 hover:text-white' : 'text-gray-500 hover:text-gray-700'} hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm md:text-base font-medium transition-colors`}>
+                Contact
+              </a>
+            </div>
+            
+            {/* Right side buttons */}
+            <div className="flex items-center gap-1 sm:gap-2 md:gap-4">
               {/* Theme Toggle Button */}
               <motion.button
                 whileHover={{ scale: 1.05 }}

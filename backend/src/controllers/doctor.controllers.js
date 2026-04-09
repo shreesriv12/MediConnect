@@ -130,9 +130,12 @@ const loginDoctor = asyncHandler(async (req, res) => {
     "-password -refreshToken"
   );
 
+  // For development, secure should be false. For production, it should be true
+  const isProduction = process.env.NODE_ENV === 'production';
   const cookieOptions = {
     httpOnly: true,
-    secure: true,
+    secure: isProduction,
+    sameSite: 'lax'
   };
 
   // Return Logged In User and Tokens
@@ -155,9 +158,13 @@ const loginDoctor = asyncHandler(async (req, res) => {
 
 const logoutDoctor = asyncHandler(async (req, res) => {
   await Doctor.findByIdAndUpdate(req.doctor._id, { $unset: { refreshToken: 1 } }, { new: true });
+  
+  // For development, secure should be false. For production, it should be true
+  const isProduction = process.env.NODE_ENV === 'production';
   const cookieOptions = {
     httpOnly: true,
-    secure: true,
+    secure: isProduction,
+    sameSite: 'lax'
   };
 
   return res
@@ -184,9 +191,12 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
   if (!doctor || incomingToken !== doctor.refreshToken) 
     throw new ApiError(401, "Invalid or expired refresh token");
 
+  // For development, secure should be false. For production, it should be true
+  const isProduction = process.env.NODE_ENV === 'production';
   const cookieOptions = {
     httpOnly: true,
-    secure: true,
+    secure: isProduction,
+    sameSite: 'lax'
   };
 
   const { accessToken, newRefreshToken } = await generateAccessRefreshTokens(
@@ -277,8 +287,9 @@ const verifyOtp = asyncHandler(async (req, res) => {
   const accessToken = jwt.sign({ _id: doctor._id }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: process.env.ACCESS_TOKEN_EXPIRY });
   const refreshToken = jwt.sign({ _id: doctor._id }, process.env.REFRESH_TOKEN_SECRET, { expiresIn: process.env.REFRESH_TOKEN_EXPIRY});
 
-  // Set secure cookies
-  const cookieOptions = { httpOnly: true, secure: true };
+  // For development, secure should be false. For production, it should be true
+  const isProduction = process.env.NODE_ENV === 'production';
+  const cookieOptions = { httpOnly: true, secure: isProduction, sameSite: 'lax' };
 
   return res
     .status(200)

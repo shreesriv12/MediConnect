@@ -5,6 +5,34 @@ import useDoctorAuthStore from '../store/doctorAuthStore';
 import useClientAuthStore from '../store/clientAuthStore';
 import { Link } from 'react-router-dom';
 
+// Helper function to safely format dates
+const formatMessageTime = (dateString) => {
+  try {
+    if (!dateString) {
+      return 'Now';
+    }
+    
+    // Parse the date
+    const date = new Date(dateString);
+    
+    // Check if date is valid
+    if (isNaN(date.getTime())) {
+      console.warn("[ChatPage] Invalid date string:", dateString);
+      return 'Now';
+    }
+    
+    // Format time
+    return date.toLocaleTimeString([], { 
+      hour12: true, 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    });
+  } catch (error) {
+    console.error("[ChatPage] Error formatting time:", error);
+    return 'Now';
+  }
+};
+
 const ChatPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedChat, setSelectedChat] = useState(null);
@@ -389,9 +417,9 @@ const ChatPage = () => {
   }
 
   return (
-    <div className="flex h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+    <div className="flex flex-col sm:flex-row h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
       {/* Sidebar */}
-      <div className={`${showContactList ? 'w-full md:w-80' : 'hidden md:block md:w-80'} bg-white/90 backdrop-blur-xl border-r border-slate-200/60 shadow-2xl`}>
+      <div className={`${showContactList ? 'w-full sm:w-80' : 'hidden sm:block sm:w-80'} bg-white/90 backdrop-blur-xl border-b sm:border-r border-slate-200/60 shadow-2xl overflow-hidden flex flex-col`}>
         {/* Header with Current User Info */}
         <div className="p-6 border-b border-slate-200/60 bg-gradient-to-r from-white/80 to-blue-50/50 backdrop-blur-sm">
           {/* Current User Avatar and Info */}
@@ -643,7 +671,17 @@ const ChatPage = () => {
             {/* Messages - Fixed ordering to show new messages at bottom */}
             <div className="flex-1 overflow-y-auto px-6 py-8 space-y-8">
               {[...messages]
-                .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)) // Keep ascending order for bottom display
+                .sort((a, b) => {
+                  const dateA = new Date(a.createdAt);
+                  const dateB = new Date(b.createdAt);
+                  
+                  // If dates are invalid, maintain original order
+                  if (isNaN(dateA.getTime()) || isNaN(dateB.getTime())) {
+                    return 0;
+                  }
+                  
+                  return dateA.getTime() - dateB.getTime(); // Ascending - newest at bottom
+                })
                 .map((message) => {
                   
                   const currentUserId = getCurrentUserId();
@@ -654,7 +692,8 @@ const ChatPage = () => {
                     senderId: message.sender?.userId || message.senderId,
                     currentUserId,
                     isOwnMessage,
-                    content: message.content
+                    content: message.content,
+                    createdAt: message.createdAt
                   });
                   
                   return (
@@ -687,11 +726,7 @@ const ChatPage = () => {
                               {isOwnMessage ? 'You' : selectedChat?.name}
                             </span>
                             <span className="text-xs text-slate-500 ml-2">
-                              {new Date(message.createdAt).toLocaleTimeString([], { 
-                                hour12: true, 
-                                hour: '2-digit', 
-                                minute: '2-digit' 
-                              })}
+                              {formatMessageTime(message.createdAt)}
                             </span>
                           </div>
                           

@@ -66,7 +66,12 @@ const initiateCall = asyncHandler(async (req, res) => {
   });
 
   if (existingCall) {
-    throw new ApiError(400, "There's already an ongoing call between you and this user");
+    // ── FIX: auto-close stale calls instead of blocking the new one
+    // This handles cases where a previous call wasn't properly cleaned up
+    existingCall.callStatus = 'ended';
+    existingCall.endTime = new Date();
+    await existingCall.save();
+    console.log(`[VideoCall] Closed stale call ${existingCall._id} before creating new one`);
   }
 
   const roomId = generateRoomId();
@@ -236,8 +241,10 @@ const toggleCamera = asyncHandler(async (req, res) => {
     throw new ApiError(403, "You are not a participant in this call");
   }
 
-  if (videoCall.callStatus !== 'ongoing') {
-    throw new ApiError(400, "Can only toggle camera during ongoing call");
+  // Allow toggling during active call states (not just 'ongoing')
+  // This fixes the 400 error when callee hasn't called acceptCall yet
+  if (!['ongoing', 'ringing', 'initiated'].includes(videoCall.callStatus)) {
+    throw new ApiError(400, "Can only toggle camera during active call");
   }
 
   // Update camera state
@@ -286,8 +293,10 @@ const toggleMicrophone = asyncHandler(async (req, res) => {
     throw new ApiError(403, "You are not a participant in this call");
   }
 
-  if (videoCall.callStatus !== 'ongoing') {
-    throw new ApiError(400, "Can only toggle microphone during ongoing call");
+  // Allow toggling during active call states (not just 'ongoing')
+  // This fixes the 400 error when callee hasn't called acceptCall yet
+  if (!['ongoing', 'ringing', 'initiated'].includes(videoCall.callStatus)) {
+    throw new ApiError(400, "Can only toggle microphone during active call");
   }
 
   // Update microphone state
@@ -336,8 +345,10 @@ const toggleScreenShare = asyncHandler(async (req, res) => {
     throw new ApiError(403, "You are not a participant in this call");
   }
 
-  if (videoCall.callStatus !== 'ongoing') {
-    throw new ApiError(400, "Can only toggle screen sharing during ongoing call");
+  // Allow toggling during active call states (not just 'ongoing')
+  // This fixes the 400 error when callee hasn't called acceptCall yet
+  if (!['ongoing', 'ringing', 'initiated'].includes(videoCall.callStatus)) {
+    throw new ApiError(400, "Can only toggle screen sharing during active call");
   }
 
   // If enabling screen share, disable camera

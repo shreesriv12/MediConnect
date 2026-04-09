@@ -130,6 +130,57 @@ const initializeSocket = (io) => {
       });
     });
 
+    // Handle real-time chat messages
+    socket.on('sendMessage', async (data) => {
+      try {
+        const { chatId, content, messageType = 'text' } = data;
+        
+        if (!chatId || !content) {
+          socket.emit('error', { message: 'Chat ID and content are required' });
+          return;
+        }
+
+        const chat = await Chat.findById(chatId);
+        if (!chat || !chat.participants.some(p => p.userId.toString() === userId)) {
+          socket.emit('error', { message: 'Not authorized to send messages in this chat' });
+          return;
+        }
+
+        const newMessage = {
+          content,
+          messageType,
+          sender: {
+            userId: socket.user._id,
+            userType: socket.userType
+          },
+          createdAt: new Date()
+        };
+
+        chat.messages.push(newMessage);
+        chat.lastMessage = new Date();
+        await chat.save();
+
+        // Get the saved message with its ID
+        const savedMessage = chat.messages[chat.messages.length - 1];
+        
+        // Populate sender info
+        await chat.populate('messages.sender.userId', 'name avatar');
+        const messageWithPopulatedSender = chat.messages[chat.messages.length - 1];
+
+        // Emit to all participants in the chat room
+        io.to(chatId).emit('newMessage', {
+          chatId,
+          message: messageWithPopulatedSender,
+          sender: socket.userType
+        });
+
+        console.log(`[Chat] Message sent in chat ${chatId} by ${socket.user.name}`);
+      } catch (error) {
+        console.error('[Chat] Error sending message:', error);
+        socket.emit('error', { message: 'Failed to send message' });
+      }
+    });
+
     // ========== VIDEO CALL HANDLERS ==========
     
     // Handle incoming call initiation
@@ -145,25 +196,18 @@ const initializeSocket = (io) => {
       const targetConnection = connectedUsers.get(targetUserId);
 
       if (targetConnection && targetConnection.socketId) {
-        // Notify target user of incoming call
-        io.to(targetConnection.socketId).emit('incoming-call', {
-          fromUserId: userId,
-          fromUserName: socket.user.name,
-          fromUserType: socket.userType,
-          callType: data.callType || 'video',
-          timestamp: new Date()
-        });
-
-        // Send the offer for WebRTC negotiation
+        // Single unified emit containing everything the callee needs
+        // This prevents the race condition from separate incoming-call and offer events
         io.to(targetConnection.socketId).emit('offer', {
           offer: data.offer,
           fromUserId: userId,
           fromUserName: socket.user.name,
           fromUserType: socket.userType,
-          callType: data.callType || 'video'
+          callType: data.callType || 'video',
+          isIncomingCall: true  // ← callee uses this to show incoming call UI
         });
 
-        console.log(`[Call] Offer forwarded to ${data.targetUserId}`);
+        console.log(`[Call] Unified offer+call notification forwarded to ${data.targetUserId}`);
         
         // Update caller's connection status
         const callerConnection = connectedUsers.get(userId);
@@ -330,6 +374,35 @@ const initializeSocket = (io) => {
       } catch (error) {
         console.error('[CallRoom] Failed to join call room:', error);
         socket.emit('error', { message: 'Failed to join call room' });
+      }
+    });
+
+    socket.on('leaveCallRoom', (roomId) => {
+      try {
+        const room = activeCallRooms.get(roomId);
+        if (room) {
+          const index = room.participants.indexOf(userId);
+          if (index !== -1) {
+            room.participants.splice(index, 1);
+            
+            socket.to(roomId).emit('userLeftCall', {
+              userId: socket.user._id,
+              userName: socket.user.name,
+              userType: socket.userType
+            });
+
+            // Remove empty rooms
+            if (room.participants.length === 0) {
+              activeCallRooms.delete(roomId);
+            }
+
+            console.log(`[CallRoom] User ${socket.user.name} left room: ${roomId}`);
+          }
+        }
+        socket.leave(roomId);
+      } catch (error) {
+        console.error('[CallRoom] Failed to leave call room:', error);
+        socket.emit('error', { message: 'Failed to leave call room' });
       }
     });
 
