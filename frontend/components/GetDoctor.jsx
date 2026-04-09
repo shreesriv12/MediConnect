@@ -104,118 +104,118 @@ const AllDoctors = () => {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 transition-colors duration-300">
       <ThemeToggle />
       
-      <div className="p-6 max-w-7xl mx-auto">
+      <div className="p-4 sm:p-6 md:p-8 lg:p-4 max-w-7xl mx-auto">
         {/* Enhanced Header */}
-        <div className="text-center mb-12">
-          <h1 className="text-5xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-blue-800 bg-clip-text text-transparent mb-4">
+        <div className="text-center mb-8 sm:mb-10 md:mb-12 px-2 sm:px-0">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-blue-800 bg-clip-text text-transparent mb-3 sm:mb-4">
             All Verified Doctors
           </h1>
-          <p className="text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto leading-relaxed">
+          <p className="text-base sm:text-lg md:text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto leading-relaxed">
             Meet our team of experienced and certified medical professionals ready to provide you with exceptional healthcare.
           </p>
-          <div className="mt-6 flex items-center justify-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
+          <div className="mt-4 sm:mt-6 flex items-center justify-center space-x-2 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
             <Star className="w-4 h-4 text-yellow-500 fill-current" />
             <span>All doctors are verified and certified</span>
           </div>
         </div>
 
         {/* Search Bar */}
-        <div className="mb-8 max-w-2xl mx-auto">
+        <div className="mb-6 sm:mb-8 md:mb-10 max-w-2xl mx-auto px-2 sm:px-0">
           <div className="relative">
-            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <Search className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 sm:w-5 h-4 sm:h-5" />
             <input
               type="text"
-              placeholder="Search doctors by name, specialization, or email..."
+              placeholder="Search doctors..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-12 pr-4 py-4 border border-gray-200 dark:border-gray-600 rounded-2xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 shadow-lg"
+              className="w-full pl-9 sm:pl-12 pr-3 sm:pr-4 py-2 sm:py-3 md:py-4 text-sm sm:text-base border border-gray-200 dark:border-gray-600 rounded-lg sm:rounded-2xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 shadow-lg"
             />
           </div>
           {searchTerm && (
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-2 text-center">
+            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-2 text-center">
               Found {filteredDoctors.length} doctor{filteredDoctors.length !== 1 ? 's' : ''} matching "{searchTerm}"
             </p>
           )}
         </div>
 
         {/* Doctors Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 md:gap-6 lg:gap-8 px-2 sm:px-0">
           {filteredDoctors.map((doctor) => (
             <div
               key={doctor._id}
-              className="group bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-3xl shadow-lg hover:shadow-2xl p-6 border border-gray-200 dark:border-gray-700 transition-all duration-300 hover:-translate-y-2 hover:scale-[1.02]"
+              className="group bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl sm:rounded-3xl shadow-lg hover:shadow-2xl p-4 sm:p-5 md:p-6 border border-gray-200 dark:border-gray-700 transition-all duration-300 hover:-translate-y-2 hover:scale-[1.02]"
             >
               {/* Doctor Image & Status */}
-              <div className="relative flex justify-center mb-6">
+              <div className="relative flex justify-center mb-4 sm:mb-5 md:mb-6">
                 <div className="relative">
                   <img
                     src={doctor.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(doctor.name)}&background=4f46e5&color=fff&size=120`}
                     alt={doctor.name}
-                    className="w-32 h-32 rounded-full object-cover border-4 border-white dark:border-gray-700 shadow-xl group-hover:border-blue-500 transition-colors duration-300"
+                    className="w-24 sm:w-28 md:w-32 h-24 sm:h-28 md:h-32 rounded-full object-cover border-3 sm:border-4 border-white dark:border-gray-700 shadow-xl group-hover:border-blue-500 transition-colors duration-300"
                     onError={(e) => {
                       e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(doctor.name)}&background=4f46e5&color=fff&size=120`;
                     }}
                   />
-                  <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-green-500 rounded-full border-4 border-white dark:border-gray-800 shadow-lg flex items-center justify-center">
-                    <div className="w-2 h-2 bg-white rounded-full"></div>
+                  <div className="absolute -bottom-1 sm:-bottom-2 -right-1 sm:-right-2 w-6 sm:w-7 md:w-8 h-6 sm:h-7 md:h-8 bg-green-500 rounded-full border-3 sm:border-4 border-white dark:border-gray-800 shadow-lg flex items-center justify-center">
+                    <div className="w-1.5 sm:w-2 h-1.5 sm:h-2 bg-white rounded-full"></div>
                   </div>
                 </div>
               </div>
 
               {/* Doctor Info */}
-              <div className="text-center mb-6">
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+              <div className="text-center mb-4 sm:mb-5 md:mb-6">
+                <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 dark:text-white mb-1 sm:mb-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-2">
                   Dr. {doctor.name}
                 </h2>
-                <div className="inline-flex items-center px-3 py-1 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 text-sm font-medium mb-3">
-                  <Stethoscope className="w-4 h-4 mr-2" />
-                  {doctor.specialization}
+                <div className="inline-flex items-center px-2 sm:px-3 py-0.5 sm:py-1 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 text-xs sm:text-sm font-medium mb-2 sm:mb-3">
+                  <Stethoscope className="w-3 sm:w-4 h-3 sm:h-4 mr-1 sm:mr-2" />
+                  <span className="line-clamp-1">{doctor.specialization}</span>
                 </div>
               </div>
 
               {/* Contact Info */}
-              <div className="space-y-3 mb-6">
+              <div className="space-y-2 sm:space-y-2.5 md:space-y-3 mb-4 sm:mb-5 md:mb-6 hidden sm:block">
                 <div className="flex items-center text-gray-600 dark:text-gray-300 group-hover:text-gray-800 dark:group-hover:text-gray-200 transition-colors">
-                  <Mail className="w-5 h-5 mr-3 text-gray-400 flex-shrink-0" />
-                  <span className="text-sm truncate">{doctor.email}</span>
+                  <Mail className="w-4 sm:w-5 h-4 sm:h-5 mr-2 sm:mr-3 text-gray-400 flex-shrink-0" />
+                  <span className="text-xs sm:text-sm truncate">{doctor.email}</span>
                 </div>
                 
                 <div className="flex items-center text-gray-600 dark:text-gray-300 group-hover:text-gray-800 dark:group-hover:text-gray-200 transition-colors">
-                  <Phone className="w-5 h-5 mr-3 text-gray-400 flex-shrink-0" />
-                  <span className="text-sm">{doctor.phone}</span>
+                  <Phone className="w-4 sm:w-5 h-4 sm:h-5 mr-2 sm:mr-3 text-gray-400 flex-shrink-0" />
+                  <span className="text-xs sm:text-sm">{doctor.phone}</span>
                 </div>
               </div>
 
               {/* Professional Details */}
-              <div className="bg-gray-50 dark:bg-gray-700/50 rounded-2xl p-4 space-y-3">
-                <div className="grid grid-cols-2 gap-4">
+              <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg sm:rounded-2xl p-3 sm:p-4 space-y-2 sm:space-y-3">
+                <div className="grid grid-cols-2 gap-2 sm:gap-3 md:gap-4">
                   <div className="text-center">
-                    <div className="flex items-center justify-center mb-1">
-                      <Award className="w-4 h-4 text-blue-500 mr-1" />
+                    <div className="flex items-center justify-center mb-0.5 sm:mb-1">
+                      <Award className="w-3 sm:w-4 h-3 sm:h-4 text-blue-500 mr-0.5 sm:mr-1" />
                     </div>
-                    <div className="text-lg font-bold text-gray-900 dark:text-white">{doctor.experience}</div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">Years Exp.</div>
+                    <div className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">{doctor.experience}</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">Exp.</div>
                   </div>
                   
                   <div className="text-center">
-                    <div className="flex items-center justify-center mb-1">
-                      <User className="w-4 h-4 text-purple-500 mr-1" />
+                    <div className="flex items-center justify-center mb-0.5 sm:mb-1">
+                      <User className="w-3 sm:w-4 h-3 sm:h-4 text-purple-500 mr-0.5 sm:mr-1" />
                     </div>
-                    <div className="text-lg font-bold text-gray-900 dark:text-white">{doctor.age}</div>
+                    <div className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">{doctor.age}</div>
                     <div className="text-xs text-gray-500 dark:text-gray-400">{doctor.gender}</div>
                   </div>
                 </div>
                 
-                <div className="pt-3 border-t border-gray-200 dark:border-gray-600">
-                  <div className="text-xs text-gray-500 dark:text-gray-400 mb-1 text-center">Educational Qualification</div>
-                  <div className="text-sm font-semibold text-gray-900 dark:text-white text-center bg-white dark:bg-gray-600 rounded-lg py-2 px-3">
+                <div className="pt-2 sm:pt-3 border-t border-gray-200 dark:border-gray-600 hidden sm:block">
+                  <div className="text-xs text-gray-500 dark:text-gray-400 mb-0.5 sm:mb-1 text-center">Qualification</div>
+                  <div className="text-xs sm:text-sm font-semibold text-gray-900 dark:text-white text-center bg-white dark:bg-gray-600 rounded py-1 sm:py-2 px-2 sm:px-3 line-clamp-1">
                     {doctor.degree}
                   </div>
                 </div>
               </div>
 
               {/* Action Button */}
-              <button className="w-full mt-6 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-semibold py-3 px-6 rounded-2xl transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl">
+              <button className="w-full mt-4 sm:mt-5 md:mt-6 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-semibold py-2 sm:py-2.5 md:py-3 px-4 sm:px-6 text-sm sm:text-base rounded-lg sm:rounded-2xl transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl">
                 View Profile
               </button>
             </div>
@@ -224,15 +224,15 @@ const AllDoctors = () => {
 
         {/* No results message */}
         {filteredDoctors.length === 0 && !loading && !error && (
-          <div className="text-center py-12">
-            <div className="w-24 h-24 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Search className="w-12 h-12 text-gray-400" />
+          <div className="text-center py-8 sm:py-12 px-4">
+            <div className="w-16 sm:w-20 md:w-24 h-16 sm:h-20 md:h-24 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
+              <Search className="w-8 sm:w-10 md:w-12 h-8 sm:h-10 md:h-12 text-gray-400" />
             </div>
-            <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">No doctors found</h3>
-            <p className="text-gray-600 dark:text-gray-400">Try adjusting your search terms or clear the search to see all doctors.</p>
+            <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white mb-1 sm:mb-2">No doctors found</h3>
+            <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mb-3 sm:mb-4">Try adjusting your search terms or clear the search to see all doctors.</p>
             <button
               onClick={() => setSearchTerm("")}
-              className="mt-4 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium"
+              className="text-sm sm:text-base text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium"
             >
               Clear search
             </button>
@@ -241,9 +241,9 @@ const AllDoctors = () => {
 
         {/* Stats Footer */}
         {!loading && !error && filteredDoctors.length > 0 && (
-          <div className="mt-12 text-center">
-            <div className="inline-flex items-center px-6 py-3 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700">
-              <span className="text-gray-600 dark:text-gray-400">
+          <div className="mt-8 sm:mt-10 md:mt-12 text-center px-4">
+            <div className="inline-flex items-center px-4 sm:px-6 py-2 sm:py-3 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-lg sm:rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700">
+              <span className="text-xs sm:text-sm md:text-base text-gray-600 dark:text-gray-400">
                 Showing <span className="font-semibold text-gray-900 dark:text-white">{filteredDoctors.length}</span> verified doctor{filteredDoctors.length !== 1 ? 's' : ''}
               </span>
             </div>
