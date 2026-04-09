@@ -135,7 +135,7 @@ const loginDoctor = asyncHandler(async (req, res) => {
   const cookieOptions = {
     httpOnly: true,
     secure: isProduction,
-    sameSite: 'lax'
+    sameSite: isProduction ? 'None' : 'Lax'
   };
 
   // Return Logged In User and Tokens
@@ -164,7 +164,7 @@ const logoutDoctor = asyncHandler(async (req, res) => {
   const cookieOptions = {
     httpOnly: true,
     secure: isProduction,
-    sameSite: 'lax'
+    sameSite: isProduction ? 'None' : 'Lax'
   };
 
   return res
@@ -196,7 +196,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
   const cookieOptions = {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production', // true on Render, false locally
-    sameSite: process.env.NODE_ENV === 'production' ? 'Lax' : 'Lax',
+    sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Lax',
     domain: process.env.NODE_ENV === 'production' ? process.env.COOKIE_DOMAIN : undefined,
     maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
   };

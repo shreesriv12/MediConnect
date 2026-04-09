@@ -56,8 +56,17 @@ const registerClient = asyncHandler(async (req, res) => {
   const client = await Client.create({ name, email, phone, password, age, gender, avatar, verified: false, verificationToken, otp, otpExpires });
   const { accessToken, refreshToken } = await generateAccessRefreshTokens(client._id);
 
-  return res.status(201).cookie("accessToken", accessToken, { httpOnly: true, secure: true })
-    .cookie("refreshToken", refreshToken, { httpOnly: true, secure: true })
+  const isProduction = process.env.NODE_ENV === 'production';
+  const cookieOptions = {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? 'None' : 'Lax',
+    maxAge: 7 * 24 * 60 * 60 * 1000
+  };
+
+  return res.status(201)
+    .cookie("accessToken", accessToken, cookieOptions)
+    .cookie("refreshToken", refreshToken, cookieOptions)
     .json(new ApiResponse(200, client, "Client registered successfully!"));
 });
 
@@ -90,7 +99,7 @@ const loginClient = asyncHandler(async (req, res) => {
 const cookieOptions = {
   httpOnly: true,
   secure: process.env.NODE_ENV === 'production', // true on Render, false locally
-  sameSite: process.env.NODE_ENV === 'production' ? 'Lax' : 'Lax',
+  sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Lax', // 'None' for cross-site production
   domain: process.env.NODE_ENV === 'production' ? process.env.COOKIE_DOMAIN : undefined,
   maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
 };
