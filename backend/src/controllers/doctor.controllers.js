@@ -195,8 +195,10 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
   const isProduction = process.env.NODE_ENV === 'production';
   const cookieOptions = {
     httpOnly: true,
-    secure: isProduction,
-    sameSite: 'lax'
+    secure: process.env.NODE_ENV === 'production', // true on Render, false locally
+    sameSite: process.env.NODE_ENV === 'production' ? 'Lax' : 'Lax',
+    domain: process.env.NODE_ENV === 'production' ? process.env.COOKIE_DOMAIN : undefined,
+    maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
   };
 
   const { accessToken, newRefreshToken } = await generateAccessRefreshTokens(
