@@ -1,7 +1,7 @@
 // lib/socket.js
 import { io } from 'socket.io-client';
 
-const ENDPOINT = 'http://localhost:5000'; // Replace with your backend URL
+const ENDPOINT = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 // This creates the socket instance with proper authentication
 const createSocket = (token, userType, userId) => {
