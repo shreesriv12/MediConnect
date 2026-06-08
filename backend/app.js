@@ -22,12 +22,28 @@ app.use(cookieParser());
 // Serve static files (e.g. uploaded avatars)
 app.use(express.static("public"));
 
-// Enable CORS
+// Enable CORS - Allow multiple origins for dev and production
+const allowedOrigins = [
+  "http://localhost:5173",           // Local dev - Vite
+  "http://localhost:3000",           // Alternative local port
+  "http://localhost:5000",           // Backend local
+  "https://mediconnect-bay.vercel.app", // Production frontend
+  process.env.CORS_ORIGIN            // Environment variable (if set)
+].filter(Boolean); // Remove undefined values
+
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || "http://localhost:5173",
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('CORS not allowed'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  optionsSuccessStatus: 200
 }));
 
 // These must come BEFORE routes
