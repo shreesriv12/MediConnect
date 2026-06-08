@@ -8,6 +8,6 @@ const router = express.Router();
 router.post('/create', isAuthenticated, createSchedule);
 
 // Patient fetches schedule for doctor/date
-router.get('/', isAuthenticated, getDoctorSchedule);
+router.get('/', getDoctorSchedule);
 
 export default router;

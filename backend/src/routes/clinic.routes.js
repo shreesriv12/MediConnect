@@ -3,6 +3,73 @@ import axios from 'axios';
 
 const router = express.Router();
 
+// Helper to post queries to Overpass with better logging, multiple mirrors, and fallbacks
+const postToOverpass = async (query) => {
+  const endpoints = [
+    'https://overpass-api.de/api/interpreter',
+    'https://overpass.openstreetmap.fr/api/interpreter',
+    'https://lz4.overpass-api.de/api/interpreter'
+  ];
+
+  const errors = [];
+
+  for (const endpoint of endpoints) {
+    try {
+      console.log(`Posting Overpass query to ${endpoint} (size=${query.length})`);
+      // Primary: plain text POST (let server decide response type)
+      const resp = await axios.post(endpoint, query, {
+        headers: {
+          'Content-Type': 'text/plain',
+          'User-Agent': 'MediConnect/1.0 (+https://example.com)'
+        },
+        timeout: 20000
+      });
+      return resp;
+    } catch (err) {
+      console.error(`Overpass POST to ${endpoint} failed:`, err.response?.status, err.response?.data || err.message);
+      errors.push({ endpoint, stage: 'post', error: err.response?.data || err.message, status: err.response?.status });
+
+      // Fallback: try form-encoded POST with `data` param
+      try {
+        const formBody = new URLSearchParams({ data: query }).toString();
+        console.log(`Attempting form-encoded POST to ${endpoint}`);
+        const resp2 = await axios.post(endpoint, formBody, {
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'User-Agent': 'MediConnect/1.0 (+https://example.com)'
+          },
+          timeout: 20000
+        });
+        return resp2;
+      } catch (err2) {
+        console.error(`Overpass form POST to ${endpoint} failed:`, err2.response?.status, err2.response?.data || err2.message);
+        errors.push({ endpoint, stage: 'form-post', error: err2.response?.data || err2.message, status: err2.response?.status });
+
+        // Fallback GET with `data` param (only for short queries)
+        try {
+          console.log(`Attempting GET fallback to ${endpoint}`);
+          const resp3 = await axios.get(endpoint, {
+            params: { data: query },
+            headers: { 'User-Agent': 'MediConnect/1.0 (+https://example.com)' },
+            timeout: 20000
+          });
+          return resp3;
+        } catch (err3) {
+          console.error(`Overpass GET to ${endpoint} failed:`, err3.response?.status, err3.response?.data || err3.message);
+          errors.push({ endpoint, stage: 'get', error: err3.response?.data || err3.message, status: err3.response?.status });
+          // continue to next endpoint
+        }
+      }
+    }
+  }
+
+  // If we reach here, all endpoints/stages failed
+  const summary = errors.map(e => `${e.endpoint} [${e.stage}] ${e.status || ''} ${typeof e.error === 'string' ? e.error.replace(/\s+/g,' ').slice(0,200) : JSON.stringify(e.error)}`).join('\n');
+  const err = new Error('All Overpass endpoints failed');
+  err.details = summary;
+  throw err;
+};
+
 // Helper function to build Overpass query
 const buildOverpassQuery = (lat, lng, amenityTypes, delta = 0.05) => {
   const south = parseFloat(lat) - delta;
@@ -57,9 +124,7 @@ router.get('/nearby-medical', async (req, res) => {
   const query = buildOverpassQuery(lat, lng, ['clinic', 'hospital', 'doctors', 'pharmacy'], delta);
   
   try {
-    const response = await axios.post('https://overpass-api.de/api/interpreter', query, {
-      headers: { 'Content-Type': 'text/plain' },
-    });
+    const response = await postToOverpass(query);
     
     const elements = processElements(response.data.elements, 'Unnamed Medical Facility');
     
@@ -91,8 +156,8 @@ router.get('/nearby-medical', async (req, res) => {
       total_count: elements.length
     });
   } catch (err) {
-    console.error("Overpass API error:", err.message);
-    res.status(500).json({ success: false, error: 'Failed to fetch medical facilities' });
+    console.error("Overpass API error:", err.response?.status, err.response?.data || err.message);
+    res.status(500).json({ success: false, error: 'Failed to fetch medical facilities', details: err.response?.data || err.message });
   }
 });
 
@@ -108,16 +173,14 @@ router.get('/nearby-hospitals', async (req, res) => {
   const query = buildOverpassQuery(lat, lng, ['hospital'], delta);
   
   try {
-    const response = await axios.post('https://overpass-api.de/api/interpreter', query, {
-      headers: { 'Content-Type': 'text/plain' },
-    });
+    const response = await postToOverpass(query);
     
     const elements = processElements(response.data.elements, 'Unnamed Hospital');
     
     res.json({ success: true, hospitals: elements });
   } catch (err) {
-    console.error("Overpass API error:", err.message);
-    res.status(500).json({ success: false, error: 'Failed to fetch hospitals' });
+    console.error("Overpass API error:", err.response?.status, err.response?.data || err.message);
+    res.status(500).json({ success: false, error: 'Failed to fetch hospitals', details: err.response?.data || err.message });
   }
 });
 
@@ -133,16 +196,14 @@ router.get('/nearby-clinics', async (req, res) => {
   const query = buildOverpassQuery(lat, lng, ['clinic', 'doctors'], delta);
   
   try {
-    const response = await axios.post('https://overpass-api.de/api/interpreter', query, {
-      headers: { 'Content-Type': 'text/plain' },
-    });
+    const response = await postToOverpass(query);
     
     const elements = processElements(response.data.elements, 'Unnamed Clinic');
     
     res.json({ success: true, clinics: elements });
   } catch (err) {
-    console.error("Overpass API error:", err.message);
-    res.status(500).json({ success: false, error: 'Failed to fetch clinics' });
+    console.error("Overpass API error:", err.response?.status, err.response?.data || err.message);
+    res.status(500).json({ success: false, error: 'Failed to fetch clinics', details: err.response?.data || err.message });
   }
 });
 
@@ -158,16 +219,14 @@ router.get('/nearby-dispensaries', async (req, res) => {
   const query = buildOverpassQuery(lat, lng, ['pharmacy'], delta);
   
   try {
-    const response = await axios.post('https://overpass-api.de/api/interpreter', query, {
-      headers: { 'Content-Type': 'text/plain' },
-    });
+    const response = await postToOverpass(query);
     
     const elements = processElements(response.data.elements, 'Unnamed Dispensary');
     
     res.json({ success: true, dispensaries: elements });
   } catch (err) {
-    console.error("Overpass API error:", err.message);
-    res.status(500).json({ success: false, error: 'Failed to fetch dispensaries' });
+    console.error("Overpass API error:", err.response?.status, err.response?.data || err.message);
+    res.status(500).json({ success: false, error: 'Failed to fetch dispensaries', details: err.response?.data || err.message });
   }
 });
 
