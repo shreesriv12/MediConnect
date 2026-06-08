@@ -4,6 +4,17 @@ import Doctor from "../models/doctor.models.js";
 import Client from "../models/client.model.js";
 import Chat from "../models/chat.model.js";
 import VideoCall from "../models/video.model.js";
+import UploadedFile from "../models/uploadedFile.model.js";
+import {
+  appendChatMessage,
+  buildReplyToSnapshot,
+  emitChatMessage,
+  emitFileReceive,
+  findChatForParticipant,
+  getSocketUser,
+  toMessageReceivePayload,
+} from "../services/chatSession.service.js";
+import { askQuestionInSession } from "../services/ragChat.service.js";
 
 // Store connected users with enhanced tracking
 const connectedUsers = new Map();
@@ -133,7 +144,7 @@ const initializeSocket = (io) => {
     // Handle real-time chat messages
     socket.on('sendMessage', async (data) => {
       try {
-        const { chatId, content, messageType = 'text' } = data;
+        const { chatId, content, messageType = 'text', replyTo } = data;
         
         if (!chatId || !content) {
           socket.emit('error', { message: 'Chat ID and content are required' });
@@ -149,6 +160,7 @@ const initializeSocket = (io) => {
         const newMessage = {
           content,
           messageType,
+          replyTo: buildReplyToSnapshot(chat, replyTo),
           sender: {
             userId: socket.user._id,
             userType: socket.userType
@@ -178,6 +190,129 @@ const initializeSocket = (io) => {
       } catch (error) {
         console.error('[Chat] Error sending message:', error);
         socket.emit('error', { message: 'Failed to send message' });
+      }
+    });
+
+    socket.on('message:send', async (data, callback) => {
+      try {
+        const { sessionId, senderId, message, replyTo } = data || {};
+
+        if (!sessionId || !message?.trim()) {
+          const response = { success: false, message: 'sessionId and message are required' };
+          callback?.(response);
+          socket.emit('error', response);
+          return;
+        }
+
+        if (senderId && senderId.toString() !== userId) {
+          const response = { success: false, message: 'senderId must match the authenticated socket user' };
+          callback?.(response);
+          socket.emit('error', response);
+          return;
+        }
+
+        const chat = await findChatForParticipant(sessionId, socket.user._id);
+
+        const savedMessage = await appendChatMessage(sessionId, {
+          content: message.trim(),
+          messageType: 'text',
+          sender: getSocketUser(socket),
+          replyTo: buildReplyToSnapshot(chat, replyTo),
+        });
+
+        emitChatMessage(io, sessionId, savedMessage, socket.userType);
+
+        callback?.({
+          success: true,
+          data: toMessageReceivePayload(sessionId, savedMessage),
+        });
+      } catch (error) {
+        console.error('[Chat] message:send failed:', error);
+        const response = {
+          success: false,
+          message: error.message || 'Failed to send message',
+        };
+        callback?.(response);
+        socket.emit('error', response);
+      }
+    });
+
+    socket.on('file:upload', async (data, callback) => {
+      try {
+        const { sessionId, fileId } = data || {};
+        if (!sessionId || !fileId) {
+          const response = { success: false, message: 'sessionId and fileId are required' };
+          callback?.(response);
+          socket.emit('error', response);
+          return;
+        }
+
+        const uploadedFile = await UploadedFile.findOne({ sessionId, fileId });
+        if (!uploadedFile) {
+          const response = { success: false, message: 'Uploaded file not found' };
+          callback?.(response);
+          socket.emit('error', response);
+          return;
+        }
+
+        await findChatForParticipant(sessionId, socket.user._id);
+        emitFileReceive(io, uploadedFile);
+
+        callback?.({
+          success: true,
+          data: {
+            fileId: uploadedFile.fileId,
+            fileName: uploadedFile.fileName,
+            fileUrl: uploadedFile.fileUrl,
+          },
+        });
+      } catch (error) {
+        console.error('[Chat] file:upload failed:', error);
+        const response = {
+          success: false,
+          message: error.message || 'Failed to broadcast file upload',
+        };
+        callback?.(response);
+        socket.emit('error', response);
+      }
+    });
+
+    socket.on('query:ask', async (data, callback) => {
+      try {
+        const { sessionId, question, replyTo } = data || {};
+        if (!sessionId || !question?.trim()) {
+          const response = { success: false, message: 'sessionId and question are required' };
+          callback?.(response);
+          socket.emit('query:error', response);
+          return;
+        }
+
+        const result = await askQuestionInSession({
+          sessionId,
+          question,
+          replyTo,
+          requester: getSocketUser(socket),
+          io,
+        });
+
+        callback?.({
+          success: true,
+          data: {
+            answer: result.answer,
+            sources: result.sources,
+            message: result.message,
+            questionMessage: result.questionMessage,
+            replyTo: result.replyTo,
+          },
+        });
+      } catch (error) {
+        console.error('[Chat] query:ask failed:', error);
+        const response = {
+          success: false,
+          message: error.message || 'Failed to answer document question',
+        };
+        callback?.(response);
+        socket.emit('query:error', response);
       }
     });
 

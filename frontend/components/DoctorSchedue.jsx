@@ -4,6 +4,8 @@ import { Calendar, Clock, DollarSign, Plus, Trash2, Eye, User, CheckCircle, XCir
 import useDoctorAuthStore from '../store/doctorAuthStore'; // Adjust the import path as necessary
 
 
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
 
 const ScheduleManagement = () => {
 
@@ -80,7 +82,7 @@ useEffect(() => {
 
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:5000/schedule/create', {
+      const response = await fetch(`${API_URL}/schedule/create`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -124,7 +126,7 @@ useEffect(() => {
 
     setLoading(true);
     try {
-      const response = await fetch(`http://localhost:5000/schedule?doctorId=${currentDoctor._id}&date=${viewDate}`, {
+      const response = await fetch(`${API_URL}/schedule?doctorId=${currentDoctor._id}&date=${viewDate}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('doctorAccessToken')}`
         }

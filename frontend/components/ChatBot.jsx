@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { useTheme } from '../context/ThemeContext'; // Adjust path as needed
 
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
 const ChatBot = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([]);
@@ -41,7 +43,7 @@ const ChatBot = () => {
     setIsLoading(true);
     
     try {
-      const response = await axios.post('http://localhost:5000/chat', {
+      const response = await axios.post(`${API_URL}/chat`, {
         userId,
         message: inputMessage
       }, {

@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 import { useTheme } from "../context/ThemeContext";
 import { Search, Phone, Mail, User, Award, Calendar, Stethoscope, Sun, Moon, MapPin, Star } from "lucide-react";
 
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
 const ThemeToggle = () => {
   const { theme, toggleTheme } = useTheme();
   
@@ -30,7 +32,7 @@ const AllDoctors = () => {
   const fetchDoctors = async () => {
     try {
       setLoading(true);
-      const response = await fetch("http://localhost:5000/doctor");
+      const response = await fetch(`${API_URL}/doctor`);
       const data = await response.json();
 
       if (!response.ok) {

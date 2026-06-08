@@ -13,6 +13,31 @@ import  clinicRoutes from './src/routes/clinic.routes.js';
 // Express and HTTP server setup
 const app = express();
 const server = http.createServer(app);
+const PORT = process.env.PORT || 5000;
+
+const normalizeOrigin = (origin) => origin?.trim().replace(/\/+$/, "");
+const allowedOrigins = [
+  process.env.CORS_ORIGIN,
+  process.env.FRONTEND_URL,
+  process.env.CLIENT_URL,
+  "http://localhost:5173",
+  "http://localhost:3000",
+]
+  .map(normalizeOrigin)
+  .filter(Boolean);
+
+const corsOptions = {
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.includes(normalizeOrigin(origin))) {
+      return callback(null, true);
+    }
+
+    return callback(new Error(`Not allowed by CORS: ${origin}`));
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+};
 
 // === Middleware Setup ===
 
@@ -23,12 +48,7 @@ app.use(cookieParser());
 app.use(express.static("public"));
 
 // Enable CORS
-app.use(cors({
-  origin: process.env.CORS_ORIGIN || "http://localhost:5173",
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+app.use(cors(corsOptions));
 
 // These must come BEFORE routes
 app.use(express.json({ limit: "16kb" }));
@@ -110,7 +130,7 @@ const transporter = nodemailer.createTransport({
 // Socket.IO setup
 const io = new Server(server, {
   cors: {
-    origin: process.env.CORS_ORIGIN || `http://localhost:${PORT}`,
+    origin: allowedOrigins,
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"]
   },
@@ -137,17 +157,20 @@ import medicineRoutes from './src/routes/medicine.routes.js';
 import scheduleRoutes from './src/routes/schedule.routes.js';
 import slotRequestRoutes from './src/routes/slotRequest.routes.js'
 import paymentRoutes from './src/routes/payment.routes.js'
+import uploadRouter from './src/routes/upload.routes.js';
 
 // === Route Usage ===
 app.use("/doctor", doctorRouter);
 app.use("/client", clientRouter);
 app.use("/schedule", scheduleRoutes);
 app.use("/chats", chatRouter);
+app.use("/api/chats", chatRouter);
 app.use("/video-call", videoCallRouter);
 app.use("/clinics", clinicRoutes); 
 app.use("/medicines", medicineRoutes);
 app.use('/slots', slotRequestRoutes);
 app.use('/payments', paymentRoutes);
+app.use('/api', uploadRouter);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -161,8 +184,11 @@ app.get('/health', (req, res) => {
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-  const statusCode = err.statusCode || 500;
-  const message = err.message || "Internal Server Error";
+  const statusCode = err.code === "LIMIT_FILE_SIZE" ? 413 : err.statusCode || 500;
+  const message =
+    err.code === "LIMIT_FILE_SIZE"
+      ? "File is too large for upload"
+      : err.message || "Internal Server Error";
   
   res.status(statusCode).json({
     success: false,
@@ -175,8 +201,6 @@ app.use((err, req, res, next) => {
 
 
 // === Start Server ===
-const PORT = process.env.PORT || 5000;
-
 connectDB()
   .then(() => {
     server.listen(PORT, () => {

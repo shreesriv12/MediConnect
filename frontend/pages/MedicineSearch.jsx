@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Search, Pill, AlertCircle, Clock, Package, Building2, FileText } from "lucide-react";
 
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
 export default function MedicineSearch() {
   const [query, setQuery] = useState("");
   const [medicines, setMedicines] = useState([]);
@@ -30,7 +32,7 @@ export default function MedicineSearch() {
 
     try {
       const res = await fetch(
-        `http://localhost:5000/medicines/search?name=${encodeURIComponent(query)}`
+        `${API_URL}/medicines/search?name=${encodeURIComponent(query)}`
       );
 
       if (!res.ok) {

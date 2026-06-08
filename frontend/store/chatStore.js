@@ -6,16 +6,57 @@ import { io } from "socket.io-client";
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
+const normaliseSources = (sources) => {
+  if (Array.isArray(sources)) {
+    return {
+      documents: sources.filter(Boolean),
+      web: [],
+    };
+  }
+
+  return {
+    documents: Array.isArray(sources?.documents)
+      ? sources.documents.filter(Boolean)
+      : [],
+    web: Array.isArray(sources?.web)
+      ? sources.web.filter(Boolean)
+      : [],
+  };
+};
+
 // ── Helper: ensure every message object has a valid ISO createdAt string ──────
 // Socket-emitted messages sometimes arrive without createdAt (or with an
 // invalid value).  Normalise once here so the UI sort never gets NaN.
 const normaliseMessage = (msg) => {
   if (!msg) return msg;
+  const nextMessage = {
+    ...msg,
+    sources: normaliseSources(msg.sources),
+  };
+
   if (!msg.createdAt || isNaN(new Date(msg.createdAt).getTime())) {
-    return { ...msg, createdAt: new Date().toISOString() };
+    return { ...nextMessage, createdAt: new Date().toISOString() };
   }
-  return msg;
+  return nextMessage;
 };
+
+const messageFromReceivePayload = (payload) =>
+  normaliseMessage({
+    _id: payload.messageId,
+    content: payload.message,
+    messageType: payload.type || "text",
+    fileId: payload.fileId || null,
+    fileName: payload.fileName || null,
+    fileUrl: payload.fileUrl || null,
+    fileSize: payload.fileSize || null,
+    fileType: payload.fileType || null,
+    sources: payload.sources || [],
+    replyTo: payload.replyTo || null,
+    sender: {
+      userId: payload.senderId,
+    },
+    createdAt: payload.createdAt,
+  });
 // ─────────────────────────────────────────────────────────────────────────────
 
 const useChatStore = create(
@@ -29,6 +70,10 @@ const useChatStore = create(
     error: null,
     isConnected: false,
     unreadCount: 0,
+    uploadedFiles: [],
+    isUploading: false,
+    uploadProgress: 0,
+    isAskingQuestion: false,
     pagination: {
       currentPage: 1,
       totalPages: 1,
@@ -119,6 +164,57 @@ const useChatStore = create(
 
         // Always refresh the chat-list preview
         get().updateChatWithNewMessage({ ...message, chatId });
+      });
+
+      newSocket.on("message:receive", (payload) => {
+        const chatId = payload?.sessionId;
+        const message = messageFromReceivePayload(payload || {});
+        if (!chatId || !message?._id) return;
+
+        const { currentChat, messages } = get();
+        if (currentChat && chatId === currentChat._id) {
+          const alreadyExists = messages.some((m) => m._id === message._id);
+          if (!alreadyExists) {
+            set({ messages: [...messages, message] });
+          }
+        }
+
+        get().updateChatWithNewMessage({ ...message, chatId });
+      });
+
+      newSocket.on("file:receive", (file) => {
+        const { currentChat, uploadedFiles } = get();
+        if (!file?.fileId || file.sessionId !== currentChat?._id) return;
+
+        const alreadyExists = uploadedFiles.some((item) => item.fileId === file.fileId);
+        if (!alreadyExists) {
+          set({ uploadedFiles: [file, ...uploadedFiles] });
+        }
+      });
+
+      newSocket.on("query:answer", (payload) => {
+        const chatId = payload?.sessionId;
+        const payloadMessages = [payload?.questionMessage, payload?.message]
+          .map(normaliseMessage)
+          .filter((message) => message?._id);
+        if (!chatId || !payloadMessages.length) return;
+
+        const { currentChat, messages } = get();
+        if (currentChat && chatId === currentChat._id) {
+          const nextMessages = [...messages];
+          for (const message of payloadMessages) {
+            if (!nextMessages.some((m) => m._id === message._id)) {
+              nextMessages.push(message);
+            }
+          }
+
+          if (nextMessages.length !== messages.length) {
+            set({ messages: nextMessages });
+          }
+        }
+
+        const latestMessage = payloadMessages[payloadMessages.length - 1];
+        get().updateChatWithNewMessage({ ...latestMessage, chatId });
       });
 
       newSocket.on("messageDelivered", (data) => {
@@ -249,7 +345,7 @@ const useChatStore = create(
       }
     },
 
-    sendMessage: async (chatId, content, messageType = "text", file = null) => {
+    sendMessage: async (chatId, content, messageType = "text", file = null, replyTo = null) => {
       if (!content.trim() && !file) {
         console.warn("[ChatStore] Cannot send empty message");
         return;
@@ -262,6 +358,7 @@ const useChatStore = create(
         formData.append("content", content);
         formData.append("messageType", messageType);
         if (file) formData.append("file", file);
+        if (replyTo) formData.append("replyTo", JSON.stringify(replyTo));
 
         const response = await axiosInstance.post(
           `${API_BASE}/chats/send-message`,
@@ -299,6 +396,156 @@ const useChatStore = create(
         throw error;
       } finally {
         set({ isLoading: false });
+      }
+    },
+
+    uploadFile: async (sessionId, file) => {
+      if (!sessionId || !file) return null;
+
+      const doctorId = localStorage.getItem("doctorId");
+      if (!doctorId) {
+        const message = "Only authenticated doctors can upload documents for Q&A";
+        set({ error: message });
+        throw new Error(message);
+      }
+
+      set({ isUploading: true, uploadProgress: 0, error: null });
+
+      try {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("sessionId", sessionId);
+        formData.append("doctorId", doctorId);
+
+        const response = await axiosInstance.post(`${API_BASE}/api/upload`, formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+          onUploadProgress: (event) => {
+            if (!event.total) return;
+            set({ uploadProgress: Math.round((event.loaded * 100) / event.total) });
+          },
+        });
+
+        const { file: uploadedFile, message: rawMessage } = response.data.data;
+        const message = normaliseMessage(rawMessage);
+
+        set((state) => ({
+          uploadedFiles: state.uploadedFiles.some((item) => item.fileId === uploadedFile.fileId)
+            ? state.uploadedFiles
+            : [uploadedFile, ...state.uploadedFiles],
+          messages:
+            state.currentChat?._id === sessionId &&
+            message?._id &&
+            !state.messages.some((item) => item._id === message._id)
+              ? [...state.messages, message]
+              : state.messages,
+        }));
+
+        if (message?._id) {
+          get().updateChatWithNewMessage({ ...message, chatId: sessionId });
+        }
+
+        return { uploadedFile, message };
+      } catch (error) {
+        const msg =
+          error.response?.data?.message ||
+          error.message ||
+          "Failed to upload file";
+        set({ error: msg });
+        throw error;
+      } finally {
+        set({ isUploading: false, uploadProgress: 0 });
+      }
+    },
+
+    fetchUploadedFiles: async (sessionId) => {
+      if (!sessionId) return [];
+
+      try {
+        const response = await axiosInstance.get(`${API_BASE}/api/chats/${sessionId}/files`);
+        const files = response.data.data || [];
+        set({ uploadedFiles: files });
+        return files;
+      } catch (error) {
+        console.error("[ChatStore] Failed to fetch uploaded files:", error);
+        set({ uploadedFiles: [] });
+        return [];
+      }
+    },
+
+    askQuestion: async (sessionId, question, replyTo = null) => {
+      const trimmedQuestion = question?.trim();
+      if (!sessionId || !trimmedQuestion) return null;
+
+      set({ isAskingQuestion: true, error: null });
+
+      const savePayloadMessages = (payload) => {
+        const payloadMessages = [payload?.questionMessage, payload?.message]
+          .map(normaliseMessage)
+          .filter((message) => message?._id);
+
+        if (!payloadMessages.length) return;
+
+        set((state) => {
+          if (state.currentChat?._id !== sessionId) return {};
+
+          const nextMessages = [...state.messages];
+          for (const message of payloadMessages) {
+            if (!nextMessages.some((item) => item._id === message._id)) {
+              nextMessages.push(message);
+            }
+          }
+
+          return { messages: nextMessages };
+        });
+
+        const latestMessage = payloadMessages[payloadMessages.length - 1];
+        get().updateChatWithNewMessage({ ...latestMessage, chatId: sessionId });
+      };
+
+      try {
+        const { socket } = get();
+
+        if (socket?.connected) {
+          const payload = await new Promise((resolve, reject) => {
+            const timeoutId = setTimeout(
+              () => reject(new Error("Document Q&A timed out")),
+              45000
+            );
+
+            socket.emit(
+              "query:ask",
+              { sessionId, question: trimmedQuestion, replyTo },
+              (response) => {
+                clearTimeout(timeoutId);
+                if (!response?.success) {
+                  reject(new Error(response?.message || "Failed to answer question"));
+                  return;
+                }
+                resolve(response.data);
+              }
+            );
+          });
+
+          savePayloadMessages(payload);
+          return payload;
+        }
+
+        const response = await axiosInstance.post(`${API_BASE}/chats/${sessionId}/query`, {
+          question: trimmedQuestion,
+          replyTo,
+        });
+        const payload = response.data.data;
+        savePayloadMessages(payload);
+        return payload;
+      } catch (error) {
+        const msg =
+          error.response?.data?.message ||
+          error.message ||
+          "Failed to answer question";
+        set({ error: msg });
+        throw error;
+      } finally {
+        set({ isAskingQuestion: false });
       }
     },
 
@@ -385,7 +632,7 @@ const useChatStore = create(
       if (socket && socket.connected && currentChat) {
         socket.emit("leaveChat", currentChat._id);
       }
-      set({ currentChat: chat, messages: [], error: null });
+      set({ currentChat: chat, messages: [], uploadedFiles: [], error: null });
       if (socket && socket.connected && chat) {
         socket.emit("joinChat", chat._id);
       }
@@ -396,7 +643,7 @@ const useChatStore = create(
       if (socket && socket.connected && currentChat) {
         socket.emit("leaveChat", currentChat._id);
       }
-      set({ currentChat: null, messages: [] });
+      set({ currentChat: null, messages: [], uploadedFiles: [] });
     },
 
     clearError: () => set({ error: null }),

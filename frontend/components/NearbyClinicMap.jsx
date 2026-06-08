@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { MapPin, Hospital, Stethoscope, Pill, Search, Loader, Phone, Globe, Clock, Building2, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
 const MedicalFacilitiesFinder = () => {
   const [userLocation, setUserLocation] = useState(null);
   const [medicalFacilities, setMedicalFacilities] = useState({
@@ -138,7 +140,7 @@ const MedicalFacilitiesFinder = () => {
   // Fetch all medical facilities from API
   const fetchAllMedicalFacilities = async (lat, lng) => {
     try {
-      const response = await fetch(`http://localhost:5000/clinics/nearby-medical?lat=${lat}&lng=${lng}&radius=${radius}`);
+      const response = await fetch(`${API_URL}/clinics/nearby-medical?lat=${lat}&lng=${lng}&radius=${radius}`);
       const data = await response.json();
       
       if (data.success) {
@@ -172,7 +174,7 @@ const MedicalFacilitiesFinder = () => {
           endpoint = 'nearby-medical';
       }
 
-      const response = await fetch(`http://localhost:5000/clinics/${endpoint}?lat=${lat}&lng=${lng}&radius=${radius}`);
+      const response = await fetch(`${API_URL}/clinics/${endpoint}?lat=${lat}&lng=${lng}&radius=${radius}`);
       const data = await response.json();
       
       if (data.success) {

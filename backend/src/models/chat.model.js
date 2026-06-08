@@ -1,6 +1,39 @@
 // models/chat.model.js
 import mongoose from "mongoose";
 
+const replyToSchema = new mongoose.Schema(
+  {
+    messageId: {
+      type: String,
+      default: null,
+    },
+    content: {
+      type: String,
+      default: null,
+      trim: true,
+    },
+    messageType: {
+      type: String,
+      enum: ['text', 'image', 'file', 'voice', 'ai'],
+      default: 'text',
+    },
+    fileId: {
+      type: String,
+      default: null,
+    },
+    fileName: {
+      type: String,
+      default: null,
+    },
+    senderType: {
+      type: String,
+      enum: ['Doctor', 'Client', 'AI'],
+      default: null,
+    },
+  },
+  { _id: false }
+);
+
 const messageSchema = new mongoose.Schema({
   content: {
     type: String,
@@ -9,11 +42,42 @@ const messageSchema = new mongoose.Schema({
   },
   messageType: {
     type: String,
-    enum: ['text', 'image', 'file', 'voice'],
+    enum: ['text', 'image', 'file', 'voice', 'ai'],
     default: 'text'
   },
   fileUrl: {
     type: String,
+    default: null
+  },
+  fileId: {
+    type: String,
+    default: null
+  },
+  fileName: {
+    type: String,
+    default: null
+  },
+  fileSize: {
+    type: Number,
+    default: null
+  },
+  fileType: {
+    type: String,
+    default: null
+  },
+  sources: {
+    type: mongoose.Schema.Types.Mixed,
+    default: () => ({
+      documents: [],
+      web: [],
+    })
+  },
+  metadata: {
+    type: mongoose.Schema.Types.Mixed,
+    default: {}
+  },
+  replyTo: {
+    type: replyToSchema,
     default: null
   },
   createdAt: {

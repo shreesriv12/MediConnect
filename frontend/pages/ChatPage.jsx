@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Send, Phone, Video, MoreVertical, ArrowLeft, Users, MessageCircle, Trash2, Eye, EyeOff } from 'lucide-react';
+import { Search, Send, Phone, Video, MoreVertical, ArrowLeft, Users, MessageCircle, Trash2, Eye, EyeOff, Paperclip, FileText, Bot, X, Loader2, Download, Reply } from 'lucide-react';
 import useChatStore from '../store/chatStore';
 import useDoctorAuthStore from '../store/doctorAuthStore';
 import useClientAuthStore from '../store/clientAuthStore';
@@ -33,6 +33,40 @@ const formatMessageTime = (dateString) => {
   }
 };
 
+const truncatePreview = (value, maxLength = 80) => {
+  const text = String(value || '').trim();
+  if (!text) return 'Message';
+  return text.length > maxLength ? `${text.slice(0, maxLength - 3)}...` : text;
+};
+
+const getReplyTitle = (reply) =>
+  truncatePreview(reply?.fileName || reply?.content || 'Message');
+
+const getReplyTypeLabel = (reply) => {
+  if (!reply) return '';
+  if (reply.fileName) return reply.messageType === 'image' ? 'Image' : 'Document';
+  if (reply.messageType === 'ai') return 'MediConnect AI';
+  return reply.senderType === 'Doctor' ? "Doctor's Message" : 'Message';
+};
+
+const getDocumentSources = (sources) =>
+  Array.isArray(sources)
+    ? sources
+    : Array.isArray(sources?.documents)
+    ? sources.documents
+    : [];
+
+const getWebSources = (sources) =>
+  Array.isArray(sources?.web) ? sources.web : [];
+
+const getWebSourceTitle = (source) =>
+  typeof source === 'string'
+    ? source
+    : source?.title || source?.sourceName || source?.url || 'Web source';
+
+const getWebSourceUrl = (source) =>
+  typeof source === 'object' ? source?.url : '';
+
 const ChatPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedChat, setSelectedChat] = useState(null);
@@ -43,11 +77,15 @@ const ChatPage = () => {
   const [currentUser, setCurrentUser] = useState(null);
   const [isTyping, setIsTyping] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
+  const [documentQuestion, setDocumentQuestion] = useState('');
+  const [isDragActive, setIsDragActive] = useState(false);
   const [messageToDelete, setMessageToDelete] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [replyingTo, setReplyingTo] = useState(null);
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
   const typingTimeoutRef = useRef(null);
+  const longPressTimerRef = useRef(null);
 
   // Chat store - Added all missing functions
   const {
@@ -58,12 +96,14 @@ const ChatPage = () => {
     error,
     isConnected,
     unreadCount,
+    isAskingQuestion,
     pagination,
     connectSocket,
     disconnectSocket,
     fetchUserChats,
     createOrGetChat,
     sendMessage,
+    askQuestion,
     getChatMessages,
     setCurrentChat,
     clearCurrentChat,
@@ -104,6 +144,41 @@ const ChatPage = () => {
       return client?._id;
     }
     return null;
+  };
+
+  const createReplyPayload = (message) => {
+    if (!message?._id) return null;
+
+    return {
+      messageId: message._id,
+      content: truncatePreview(message.fileName || message.content || 'Message', 240),
+      messageType: message.messageType || 'text',
+      fileId: message.fileId || null,
+      fileName: message.fileName || null,
+      senderType: message.messageType === 'ai' ? 'AI' : message.sender?.userType || null,
+    };
+  };
+
+  const handleReplyToMessage = (message) => {
+    const replyPayload = createReplyPayload(message);
+    if (replyPayload) {
+      setReplyingTo(replyPayload);
+    }
+  };
+
+  const clearLongPressTimer = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+
+  const startLongPressReply = (message) => {
+    clearLongPressTimer();
+    longPressTimerRef.current = setTimeout(() => {
+      handleReplyToMessage(message);
+      longPressTimerRef.current = null;
+    }, 550);
   };
 
   // Determine user type and setup
@@ -185,6 +260,11 @@ const ChatPage = () => {
       }
     }
   }, [currentChat, messages, markMessagesAsRead, isMessageFromCurrentUser]);
+
+  useEffect(() => {
+    setReplyingTo(null);
+    clearLongPressTimer();
+  }, [currentChat?._id]);
 
   const [loading, setLoading] = useState(false);
 
@@ -306,10 +386,19 @@ const ChatPage = () => {
       
       const messageType = selectedFile ? 
         (selectedFile.type.startsWith('image/') ? 'image' : 'file') : 'text';
-      
-      await sendMessage(currentChat._id, newMessage.trim(), messageType, selectedFile);
+
+      const shouldAskFromDocumentReply =
+        userType === 'Client' && replyingTo?.fileId && !selectedFile && newMessage.trim();
+
+      if (shouldAskFromDocumentReply) {
+        await askQuestion(currentChat._id, newMessage.trim(), replyingTo);
+      } else {
+        await sendMessage(currentChat._id, newMessage.trim(), messageType, selectedFile, replyingTo);
+      }
+
       setNewMessage('');
       setSelectedFile(null);
+      setReplyingTo(null);
       
       // Reset file input
       if (fileInputRef.current) {
@@ -321,16 +410,38 @@ const ChatPage = () => {
     }
   };
 
-  // Handle file selection
-  const handleFileSelect = (e) => {
-    const file = e.target.files[0];
+  const selectFile = (file) => {
     if (file) {
-      // Check file size (e.g., max 10MB)
       if (file.size > 10 * 1024 * 1024) {
         setError('File size must be less than 10MB');
         return;
       }
       setSelectedFile(file);
+    }
+  };
+
+  // Handle file selection
+  const handleFileSelect = (e) => {
+    selectFile(e.target.files[0]);
+  };
+
+  const handleDropFile = (e) => {
+    e.preventDefault();
+    setIsDragActive(false);
+    selectFile(e.dataTransfer.files?.[0]);
+  };
+
+  const handleAskDocumentQuestion = async (e) => {
+    e.preventDefault();
+    if (!currentChat?._id || !documentQuestion.trim()) return;
+
+    try {
+      await askQuestion(currentChat._id, documentQuestion.trim(), replyingTo);
+      setDocumentQuestion('');
+      setReplyingTo(null);
+    } catch (error) {
+      console.error('Failed to ask document question:', error);
+      setError('Failed to ask document question');
     }
   };
 
@@ -685,16 +796,10 @@ const ChatPage = () => {
                 .map((message) => {
                   
                   const currentUserId = getCurrentUserId();
-                  const isOwnMessage = isMessageFromCurrentUser(message, currentUserId);
-
-                  console.log('Message debug:', {
-                    messageId: message._id,
-                    senderId: message.sender?.userId || message.senderId,
-                    currentUserId,
-                    isOwnMessage,
-                    content: message.content,
-                    createdAt: message.createdAt
-                  });
+                  const isAiMessage = message.messageType === 'ai';
+                  const isOwnMessage = isAiMessage ? false : isMessageFromCurrentUser(message, currentUserId);
+                  const documentSources = getDocumentSources(message.sources);
+                  const webSources = getWebSources(message.sources);
                   
                   return (
                     <div
@@ -710,11 +815,13 @@ const ChatPage = () => {
                         <div className="flex-shrink-0">
                           <img
                             src={
-                              isOwnMessage 
+                              isAiMessage
+                                ? `https://ui-avatars.com/api/?name=AI&background=0f766e&color=fff`
+                                : isOwnMessage 
                                 ? (currentUser?.avatar || currentUser?.profileImage || `https://ui-avatars.com/api/?name=${currentUser?.name}&background=3b82f6&color=fff`)
                                 : (selectedChat?.avatar || selectedChat?.profileImage || `https://ui-avatars.com/api/?name=${selectedChat?.name}&background=10b981&color=fff`)
                             }
-                            alt={isOwnMessage ? currentUser?.name : selectedChat?.name}
+                            alt={isAiMessage ? 'MediConnect AI' : isOwnMessage ? currentUser?.name : selectedChat?.name}
                             className="w-12 h-12 rounded-2xl object-cover ring-3 ring-white shadow-xl"
                           />
                         </div>
@@ -723,7 +830,7 @@ const ChatPage = () => {
                           {/* Sender Name */}
                           <div className={`mb-2 ${isOwnMessage ? 'text-right' : 'text-left'}`}>
                             <span className="text-xs font-semibold text-slate-600">
-                              {isOwnMessage ? 'You' : selectedChat?.name}
+                              {isAiMessage ? 'MediConnect AI' : isOwnMessage ? 'You' : selectedChat?.name}
                             </span>
                             <span className="text-xs text-slate-500 ml-2">
                               {formatMessageTime(message.createdAt)}
@@ -732,14 +839,87 @@ const ChatPage = () => {
                           
                           {/* Message Bubble */}
                           <div
-                            className={`relative inline-block max-w-lg p-4 rounded-2xl shadow-lg ${
-                              isOwnMessage
+                            onDoubleClick={() => handleReplyToMessage(message)}
+                            onTouchStart={() => startLongPressReply(message)}
+                            onTouchEnd={clearLongPressTimer}
+                            onTouchMove={clearLongPressTimer}
+                            className={`group relative inline-block max-w-lg p-4 rounded-2xl shadow-lg ${
+                              isAiMessage
+                                ? 'bg-emerald-50 text-slate-900 border border-emerald-200'
+                                : isOwnMessage
                                 ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white'
                                 : 'bg-white text-slate-900 border border-slate-200'
                             }`}
                           >
+                            {message.replyTo && (
+                              <div
+                                className={`mb-3 rounded-lg border-l-4 px-3 py-2 text-left ${
+                                  isAiMessage
+                                    ? 'border-emerald-500 bg-white/80 text-slate-700'
+                                    : isOwnMessage
+                                    ? 'border-white/80 bg-white/15 text-white'
+                                    : 'border-blue-500 bg-slate-50 text-slate-700'
+                                }`}
+                              >
+                                <p className="text-[11px] font-semibold uppercase tracking-normal opacity-75">
+                                  {getReplyTypeLabel(message.replyTo)}
+                                </p>
+                                <p className="mt-0.5 truncate text-xs font-semibold">
+                                  {getReplyTitle(message.replyTo)}
+                                </p>
+                              </div>
+                            )}
+
                             {/* Message Type Rendering */}
-                            {message.messageType === 'image' && message.fileUrl ? (
+                            {isAiMessage ? (
+                              <div className="text-left">
+                                <div className="flex items-center gap-2 mb-2 text-emerald-700 font-semibold text-sm">
+                                  <Bot className="w-4 h-4" />
+                                  <span>Document Answer</span>
+                                </div>
+                                <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                                  {message.content}
+                                </p>
+                                {(documentSources.length > 0 || webSources.length > 0) && (
+                                  <div className="mt-3 flex flex-wrap gap-2">
+                                    {documentSources.map((source) => (
+                                      <span
+                                        key={`doc-${source}`}
+                                        className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 text-xs font-medium text-emerald-700 border border-emerald-200"
+                                      >
+                                        <FileText className="w-3 h-3" />
+                                        {source}
+                                      </span>
+                                    ))}
+                                    {webSources.map((source, index) => {
+                                      const title = getWebSourceTitle(source);
+                                      const url = getWebSourceUrl(source);
+
+                                      return url ? (
+                                        <a
+                                          key={`web-${url}`}
+                                          href={url}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 text-xs font-medium text-blue-700 border border-blue-200 hover:bg-blue-50"
+                                        >
+                                          <Search className="w-3 h-3" />
+                                          {title}
+                                        </a>
+                                      ) : (
+                                        <span
+                                          key={`web-${title}-${index}`}
+                                          className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 text-xs font-medium text-blue-700 border border-blue-200"
+                                        >
+                                          <Search className="w-3 h-3" />
+                                          {title}
+                                        </span>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                              </div>
+                            ) : message.messageType === 'image' && message.fileUrl ? (
                               <div className="mb-2">
                                 <img
                                   src={message.fileUrl}
@@ -766,12 +946,25 @@ const ChatPage = () => {
                                     {message.fileSize ? `${(message.fileSize / 1024).toFixed(1)} KB` : 'File'}
                                   </p>
                                 </div>
-                                <button
-                                  onClick={() => window.open(message.fileUrl, '_blank')}
-                                  className="p-2 hover:bg-slate-200/20 rounded-lg transition-colors"
-                                >
-                                  <Eye className="w-4 h-4" />
-                                </button>
+                                <div className="flex items-center gap-1">
+                                  <button
+                                    onClick={() => window.open(message.fileUrl, '_blank', 'noopener,noreferrer')}
+                                    className="p-2 hover:bg-slate-200/20 rounded-lg transition-colors"
+                                    title="Open file"
+                                  >
+                                    <Eye className="w-4 h-4" />
+                                  </button>
+                                  <a
+                                    href={message.metadata?.downloadUrl || message.fileUrl}
+                                    download={message.fileName || true}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="p-2 hover:bg-slate-200/20 rounded-lg transition-colors"
+                                    title="Download file"
+                                  >
+                                    <Download className="w-4 h-4" />
+                                  </a>
+                                </div>
                               </div>
                             ) : (
                               <p className="text-sm leading-relaxed whitespace-pre-wrap">
@@ -800,6 +993,14 @@ const ChatPage = () => {
 
                               {/* Message Actions */}
                               <div className="flex items-center space-x-1">
+                                <button
+                                  type="button"
+                                  onClick={() => handleReplyToMessage(message)}
+                                  className="p-1 hover:bg-slate-200/20 rounded-lg transition-colors opacity-70 hover:opacity-100"
+                                  title="Reply"
+                                >
+                                  <Reply className="w-3 h-3" />
+                                </button>
                                 {isOwnMessage && (
                                   <button
                                     onClick={() => {
@@ -823,6 +1024,8 @@ const ChatPage = () => {
                               <div className={`w-0 h-0 border-t-4 border-b-4 border-transparent ${
                                 isOwnMessage 
                                   ? 'border-l-4 border-l-blue-500' 
+                                  : isAiMessage
+                                  ? 'border-r-4 border-r-emerald-50'
                                   : 'border-r-4 border-r-white'
                               }`}></div>
                             </div>
@@ -857,7 +1060,68 @@ const ChatPage = () => {
             </div>
 
             {/* Message Input */}
-            <div className="bg-white/90 backdrop-blur-xl border-t border-slate-200/60 p-6 shadow-lg">
+            <div
+              className={`bg-white/90 backdrop-blur-xl border-t border-slate-200/60 p-6 shadow-lg transition-all ${
+                isDragActive ? 'ring-4 ring-blue-300/50 bg-blue-50/80' : ''
+              }`}
+              onDragOver={(e) => {
+                e.preventDefault();
+                setIsDragActive(true);
+              }}
+              onDragLeave={() => setIsDragActive(false)}
+              onDrop={handleDropFile}
+            >
+              {replyingTo && (
+                <div className="mb-4 flex items-center justify-between gap-3 rounded-2xl border border-blue-200 bg-blue-50/80 px-4 py-3">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <Reply className="h-4 w-4 flex-shrink-0 text-blue-600" />
+                    <div className="min-w-0 text-left">
+                      <p className="text-xs font-semibold text-blue-700">
+                        Replying to:
+                      </p>
+                      <p className="truncate text-sm font-medium text-slate-800">
+                        {getReplyTitle(replyingTo)}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setReplyingTo(null)}
+                    className="rounded-xl p-2 text-slate-500 transition-colors hover:bg-blue-100 hover:text-slate-800"
+                    title="Cancel reply"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+
+              {userType === 'Client' && (
+                <form onSubmit={handleAskDocumentQuestion} className="mb-4 flex items-center gap-3">
+                  <div className="relative flex-1">
+                    <Bot className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-emerald-600" />
+                    <input
+                      type="text"
+                      value={documentQuestion}
+                      onChange={(e) => setDocumentQuestion(e.target.value)}
+                      placeholder={replyingTo ? `Ask about ${getReplyTitle(replyingTo)}...` : "Ask about shared documents..."}
+                      className="w-full rounded-2xl border border-emerald-200 bg-emerald-50/70 py-3 pl-11 pr-4 text-sm text-slate-800 placeholder-slate-500 focus:border-emerald-500 focus:outline-none focus:ring-3 focus:ring-emerald-500/20"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={!documentQuestion.trim() || isAskingQuestion}
+                    className="rounded-2xl bg-emerald-600 p-3 text-white transition-all hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    title="Ask"
+                  >
+                    {isAskingQuestion ? (
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                    ) : (
+                      <Bot className="h-5 w-5" />
+                    )}
+                  </button>
+                </form>
+              )}
+
               {/* File Preview */}
               {selectedFile && (
                 <div className="mb-4 p-4 bg-blue-50/80 rounded-2xl border border-blue-200/60">
@@ -893,8 +1157,9 @@ const ChatPage = () => {
                         }
                       }}
                       className="p-2 hover:bg-red-100 rounded-xl transition-colors"
+                      title="Remove"
                     >
-                      <Trash2 className="w-4 h-4 text-red-500" />
+                      <X className="w-4 h-4 text-red-500" />
                     </button>
                   </div>
                 </div>
@@ -913,16 +1178,22 @@ const ChatPage = () => {
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
+                  disabled={isLoading}
                   className="p-3 hover:bg-blue-50/80 rounded-2xl transition-all duration-300 hover:scale-105 hover:shadow-md"
+                  title="Attach file"
                 >
-                  <span className="text-2xl">📎</span>
+                  <Paperclip className="w-5 h-5 text-slate-600" />
                 </button>
 
                 <div className="flex-1">
                   <textarea
                     value={newMessage}
                     onChange={handleInputChange}
-                    placeholder="Type your message..."
+                    placeholder={
+                      userType === 'Client' && replyingTo?.fileId
+                        ? `Ask about ${getReplyTitle(replyingTo)}...`
+                        : 'Type your message...'
+                    }
                     className="w-full p-4 bg-slate-50/80 border border-slate-200/60 rounded-2xl focus:outline-none focus:ring-3 focus:ring-blue-500/30 focus:border-blue-500 transition-all duration-300 resize-none text-slate-700 placeholder-slate-500 shadow-sm"
                     rows={newMessage.split('\n').length || 1}
                     style={{ maxHeight: '120px' }}
@@ -937,7 +1208,7 @@ const ChatPage = () => {
 
                 <button
                   type="submit"
-                  disabled={!newMessage.trim() && !selectedFile}
+                  disabled={isLoading || (!newMessage.trim() && !selectedFile)}
                   className="p-4 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-2xl transition-all duration-300 hover:scale-105 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                 >
                   <Send className="w-5 h-5" />

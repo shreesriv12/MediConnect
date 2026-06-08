@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { User, Phone, Mail, Calendar, CreditCard, IndianRupee, Clock, Filter } from 'lucide-react';
 import useDoctorAuthStore from '../store/doctorAuthStore';
 
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
 const DoctorPaymentPortal = () => {
   const [paymentData, setPaymentData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -40,7 +42,7 @@ const DoctorPaymentPortal = () => {
       }
       
       const doctorId = currentDoctor._id; 
-      const response = await fetch(`http://localhost:5000/payments/history?doctorId=${doctorId}`);
+      const response = await fetch(`${API_URL}/payments/history?doctorId=${doctorId}`);
       
       if (!response.ok) {
         throw new Error('Failed to fetch payment history');

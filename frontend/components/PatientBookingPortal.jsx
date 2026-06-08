@@ -19,6 +19,8 @@ import {
 } from 'lucide-react';
 import useClientAuthStore from '../store/clientAuthStore';
 
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
 const PatientBookingPortal = () => {
   const [currentView, setCurrentView] = useState('doctors'); // 'doctors' or 'booking'
   const [doctors, setDoctors] = useState([]);
@@ -56,7 +58,7 @@ const PatientBookingPortal = () => {
   const fetchDoctors = async () => {
     try {
       setLoading(true);
-      const response = await fetch("http://localhost:5000/doctor");
+      const response = await fetch(`${API_URL}/doctor`);
       const data = await response.json();
 
       if (!response.ok) {
@@ -76,7 +78,7 @@ const PatientBookingPortal = () => {
   const fetchDoctorSchedule = async (doctorId, date) => {
     try {
       setLoading(true);
-      const response = await fetch(`http://localhost:5000/schedule?doctorId=${doctorId}&date=${date}`, {
+      const response = await fetch(`${API_URL}/schedule?doctorId=${doctorId}&date=${date}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('clientAccessToken')}`
         }
@@ -101,7 +103,7 @@ const PatientBookingPortal = () => {
   const requestSlot = async (scheduleId, slotIndex, slotFee) => {
     try {
       setBookingLoading(true);
-      const response = await fetch('http://localhost:5000/slots/request', {
+      const response = await fetch(`${API_URL}/slots/request`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -149,7 +151,7 @@ const PatientBookingPortal = () => {
   // Create Razorpay order
   const createRazorpayOrder = async (slotRequestId, amount) => {
     try {
-      const response = await fetch('http://localhost:5000/payments/order', {
+      const response = await fetch(`${API_URL}/payments/order`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -176,7 +178,7 @@ const PatientBookingPortal = () => {
   // Verify payment
   const verifyPayment = async (paymentData) => {
     try {
-      const response = await fetch('http://localhost:5000/payments/verify', {
+      const response = await fetch(`${API_URL}/payments/verify`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
