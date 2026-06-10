@@ -17,6 +17,16 @@ const server = http.createServer(app);
 const PORT = process.env.PORT || 5000;
 
 const normalizeOrigin = (origin) => origin?.trim().replace(/\/+$/, "");
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  process.env.CLIENT_URL,
+  ...(process.env.ALLOWED_ORIGINS || "").split(","),
+  ...(process.env.CORS_ORIGIN || "").split(","),
+  "http://localhost:5173",
+  "http://localhost:3000",
+]
+  .filter(Boolean)
+  .map(normalizeOrigin);
 
 const corsOptions = {
   origin(origin, callback) {
