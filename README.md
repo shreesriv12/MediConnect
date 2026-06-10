@@ -65,6 +65,8 @@ The previous README covered the broad concept but missed several implemented mod
 - Groq-powered dashboard assistant with local fallback.
 - Hugging Face embeddings, Pinecone vector search, MongoDB lexical/vector fallback, OCR, and hybrid web fallback.
 - Socket-authenticated chat events, typing/read/delete workflows, replies, file broadcasts, and online status.
+- Notifications and a real-time event system (incoming call, message, presence, appointment notifications) via Socket.IO, backed by persisted notification records.
+- Automatic agentic scheduling assistant that parses natural language booking prompts, checks doctor availability, reserves slots, creates pending appointments, and issues Razorpay orders.
 - Video-call lifecycle APIs, media controls, call quality, ratings, issue reporting, and history.
 - S3/local chat-file storage and Cloudinary media upload behavior.
 - Razorpay payment history analytics for doctors.
@@ -138,7 +140,7 @@ The previous README covered the broad concept but missed several implemented mod
 | Call status notifications | Accept, reject, and end actions emit `callAccepted`, `callRejected`, and `callEnded`. | Keeps both participants synchronized during video workflows. |
 | Message notifications | New messages, file uploads, RAG answers, read receipts, and deletions are broadcast to chat rooms. | Keeps conversations live without page refreshes. |
 | Presence updates | Online, offline, custom status, and online-user events are emitted through Socket.IO. | Helps users know when contacts are available. |
-| Appointment reminders | Not currently implemented in the backend. | Listed as a future production enhancement rather than an active feature. |
+| Appointment reminders | A backend cron job detects upcoming accepted appointments and sends appointment reminder notifications to both doctor and patient. | Helps users prepare for upcoming consultations. |
 
 ### 🤖 AI Features
 
@@ -997,6 +999,21 @@ Payment history response:
 }
 ```
 
+### Notification APIs
+
+| Method | Endpoint | Auth | Description |
+| --- | --- | --- | --- |
+| GET | `/notifications` | Authenticated | Fetch current user's notification list. |
+| GET | `/notifications/unread-count` | Authenticated | Get unread notification count. |
+| PATCH | `/notifications/:notificationId/read` | Authenticated | Mark a notification as read. |
+| PATCH | `/notifications/read-all` | Authenticated | Mark all notifications as read. |
+
+### Agent APIs
+
+| Method | Endpoint | Auth | Description |
+| --- | --- | --- | --- |
+| POST | `/agent/query` | Client | Natural-language scheduling assistant for doctor search, availability, booking, and payment preparation. |
+
 ### Chat & RAG APIs
 
 Chat routes are mounted at both `/chats` and `/api/chats`.
@@ -1195,6 +1212,7 @@ Response:
 | `messageDeleted` | Server -> Client | Message deletion broadcast. |
 | `userOnline` / `userOffline` | Server -> Client | Presence updates. |
 | `call-offer`, `call-answer`, `iceCandidate` | Both | WebRTC signaling. |
+| `notification:new` | Server -> Client | Delivers new persisted notification payloads for chat, call invites, and reminders. |
 | `incomingCall`, `callAccepted`, `callRejected`, `callEnded` | Server -> Client | Call lifecycle notifications. |
 | `toggleVideo`, `toggleAudio`, `shareScreen` | Client -> Server | Media state events. |
 | `userToggleVideo`, `userToggleAudio`, `userShareScreen` | Server -> Client | Remote media state updates. |
