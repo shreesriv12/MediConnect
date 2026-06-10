@@ -57,9 +57,8 @@ Healthcare access often involves fragmented tools: separate platforms for doctor
 | Doctors | Register professional profiles, manage schedules, communicate with patients, upload documents for RAG, conduct video calls, view payments. |
 | Developers | Extend a modular MERN codebase with healthcare, AI, real-time, and payment features. |
 
-### Functionality Added to This README From the Current Codebase
+### Functionality 
 
-The previous README covered the broad concept but missed several implemented modules. This version documents:
 
 - RAG document upload and chat Q&A.
 - Groq-powered dashboard assistant with local fallback.
