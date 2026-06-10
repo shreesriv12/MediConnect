@@ -9,7 +9,7 @@ const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 const ScheduleManagement = () => {
 
-  const { isAuthenticated, currentDoctor,getCurrentDoctor } = useDoctorAuthStore();
+  const { isAuthenticated, currentDoctor, doctor, getCurrentDoctor } = useDoctorAuthStore();
   const [activeTab, setActiveTab] = useState('create');
   const [schedules, setSchedules] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -27,13 +27,10 @@ const ScheduleManagement = () => {
 
   // Initialize doctor data on component mount
 useEffect(() => {
-  console.log('isAuthenticated:', isAuthenticated);
-  console.log('currentDoctor:', currentDoctor);
-  if (isAuthenticated && !currentDoctor) {
-    console.log('Fetching current doctor...');
+  if (isAuthenticated && !currentDoctor && !doctor) {
     getCurrentDoctor();
   }
-}, [isAuthenticated, currentDoctor, getCurrentDoctor]);
+}, [isAuthenticated, currentDoctor, doctor, getCurrentDoctor]);
 
   // Add new slot to create schedule
   const addSlot = () => {
@@ -75,7 +72,8 @@ useEffect(() => {
       return;
     }
 
-    if (!currentDoctor?._id) {
+    const activeDoctor = currentDoctor || doctor;
+    if (!activeDoctor?._id) {
       setMessage({ text: 'Doctor information not available', type: 'error' });
       return;
     }
@@ -89,7 +87,7 @@ useEffect(() => {
           'Authorization': `Bearer ${localStorage.getItem('doctorAccessToken')}`
         },
         body: JSON.stringify({
-          doctorId: currentDoctor._id, // Use doctor ID from store
+          doctorId: (currentDoctor || doctor)._id, // Use doctor ID from store
           date: newSchedule.date,
           slots: newSchedule.slots.map(slot => ({
             time: slot.time,
@@ -119,14 +117,15 @@ useEffect(() => {
       return;
     }
 
-    if (!currentDoctor?._id) {
+    const activeDoctor = currentDoctor || doctor;
+    if (!activeDoctor?._id) {
       setMessage({ text: 'Doctor information not available', type: 'error' });
       return;
     }
 
     setLoading(true);
     try {
-      const response = await fetch(`${API_URL}/schedule?doctorId=${currentDoctor._id}&date=${viewDate}`, {
+      const response = await fetch(`${API_URL}/schedule?doctorId=${activeDoctor._id}&date=${viewDate}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('doctorAccessToken')}`
         }

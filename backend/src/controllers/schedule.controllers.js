@@ -5,15 +5,22 @@ export const createSchedule = async (req, res) => {
     const { date, slots } = req.body;
     const doctorId = req.doctor._id; // ✅ Use the correct field
 
+    const normalizedSlots = Array.isArray(slots) ? slots : [];
+    if (!date || !normalizedSlots.length) {
+      return res.status(400).json({ message: 'date and at least one slot are required' });
+    }
+
     const existing = await Schedule.findOne({ doctorId, date });
     if (existing) {
-      return res.status(400).json({ message: 'Schedule already exists for this date' });
+      existing.slots.push(...normalizedSlots);
+      await existing.save();
+      return res.status(200).json({ success: true, schedule: existing, message: 'Slots added to existing schedule' });
     }
 
     const newSchedule = new Schedule({
       doctorId,
       date,
-      slots
+      slots: normalizedSlots
     });
 
     await newSchedule.save();

@@ -3,6 +3,8 @@ import { Navigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import ClientDashboardNavbar from '../components/ClientDashboardNavbar';
 import ChatBot from '../components/ChatBot';
+import AgentAssistant from '../components/AgentAssistant';
+import NotificationPanel from '../components/NotificationPanel';
 import useClientAuthStore from '../store/clientAuthStore';
 import { useTheme } from '../context/ThemeContext';
 
@@ -62,7 +64,7 @@ const ClientDashboard = () => {
             initial={{ y: -50, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.5, duration: 0.8 }}
-            className={`text-6xl font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}
+            className={`text-4xl sm:text-5xl md:text-6xl font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}
           >
             Welcome to
           </motion.h1>
@@ -72,7 +74,7 @@ const ClientDashboard = () => {
             transition={{ delay: 1, duration: 0.8 }}
             className="flex items-center justify-center"
           >
-            <span className="text-7xl font-bold bg-gradient-to-r from-green-500 to-blue-600 bg-clip-text text-transparent">
+            <span className="text-5xl sm:text-6xl md:text-7xl font-bold bg-gradient-to-r from-green-500 to-blue-600 bg-clip-text text-transparent">
               MediConnect
             </span>
           </motion.div>
@@ -80,7 +82,7 @@ const ClientDashboard = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 1.5, duration: 0.8 }}
-            className={`text-xl mt-4 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}
+            className={`text-lg sm:text-xl mt-4 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}
           >
             Client Portal
           </motion.p>
@@ -185,6 +187,9 @@ const ClientDashboard = () => {
             Welcome back! Manage your healthcare journey with ease.
           </p>
         </motion.div>
+
+        <NotificationPanel />
+        <AgentAssistant />
 
         {/* Quick Stats */}
         <motion.div

@@ -3,6 +3,7 @@ import { Navigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import DoctorDashboardNavbar from '../components/DoctorDahboardNavbar';
 import ChatBot from '../components/ChatBot';
+import NotificationPanel from '../components/NotificationPanel';
 import useDoctorAuthStore from '../store/doctorAuthStore';
 import { useTheme } from '../context/ThemeContext';
 
@@ -62,7 +63,7 @@ const DoctorDashboard = () => {
             initial={{ y: -50, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.5, duration: 0.8 }}
-            className={`text-6xl font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}
+            className={`text-4xl sm:text-5xl md:text-6xl font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}
           >
             Welcome to
           </motion.h1>
@@ -72,7 +73,7 @@ const DoctorDashboard = () => {
             transition={{ delay: 1, duration: 0.8 }}
             className="flex items-center justify-center"
           >
-            <span className="text-7xl font-bold bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent">
+            <span className="text-5xl sm:text-6xl md:text-7xl font-bold bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent">
               MediConnect
             </span>
           </motion.div>
@@ -80,7 +81,7 @@ const DoctorDashboard = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 1.5, duration: 0.8 }}
-            className={`text-xl mt-4 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}
+            className={`text-lg sm:text-xl mt-4 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}
           >
             Doctor Portal
           </motion.p>
@@ -165,6 +166,8 @@ const DoctorDashboard = () => {
             Welcome back! Here's what's happening with your practice today.
           </p>
         </motion.div>
+
+        <NotificationPanel />
 
         {/* Quick Stats */}
         <motion.div

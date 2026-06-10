@@ -22,6 +22,8 @@ import useClientAuthStore from "../store/clientAuthStore";
 import { Link } from "react-router-dom";
 import io from "socket.io-client";
 
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
 const VideoCallPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedContact, setSelectedContact] = useState(null);
@@ -33,6 +35,7 @@ const VideoCallPage = () => {
   const [callQuality, setCallQuality] = useState({ video: "high", audio: "high" });
   const [connectionState, setConnectionState] = useState("disconnected");
   const [error, setError] = useState("");
+  const [incomingOffer, setIncomingOffer] = useState(null);
   const [loading, setLoading] = useState(false);
 
   // Video refs
@@ -138,7 +141,6 @@ const VideoCallPage = () => {
       }
 
       try {
-        const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
         const socket = io(API_URL, {
           auth: { token, userType, userId: currentUser._id },
           transports: ["websocket", "polling"],
@@ -163,6 +165,10 @@ const VideoCallPage = () => {
           console.log("[Socket] Offer received", { fromUser: data.fromUserName, isIncoming: data.isIncomingCall });
           if (data.isIncomingCall) {
             console.log("[Socket] Incoming call from:", data.fromUserName);
+            remoteUserIdRef.current = data.fromUserId;
+            setIncomingOffer(data);
+            setConnectionState("ringing");
+            return;
           }
           await handleReceiveOffer(data);
         });
@@ -184,6 +190,7 @@ const VideoCallPage = () => {
         });
 
         socket.on("callRejected", () => handleCallRejected());
+        socket.on("call-rejected", () => handleCallRejected());
 
         socket.on("disconnect", (reason) => {
           console.warn("[Socket] Disconnected:", reason);
@@ -325,7 +332,7 @@ const VideoCallPage = () => {
       if (event.candidate && socketRef.current?.connected) {
         socketRef.current.emit("iceCandidate", {
           candidate: event.candidate,
-          targetUserId: selectedContact?._id || getCurrentUserId(),
+          targetUserId: remoteUserIdRef.current || selectedContact?._id,
         });
       }
     };
@@ -653,15 +660,23 @@ const VideoCallPage = () => {
   const fetchContacts = async () => {
     try {
       setLoading(true);
-      if (userType === "Client") {
-        const result = await getAllDoctors({ verified: "true" });
-        if (result.success) setContacts(result.data);
-      } else if (userType === "Doctor") {
-        const result = await getAllClients();
-        if (result.success) setContacts(result.data);
+      const token = getAuthToken(userType);
+      const response = await fetch(`${API_URL}/chats/booked-contacts`, {
+        credentials: "include",
+        headers: {
+          Authorization: token ? `Bearer ${token}` : undefined,
+        },
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Failed to fetch booked contacts");
       }
+
+      setContacts(data.data || []);
     } catch (e) {
       console.error("Failed to fetch contacts:", e);
+      setError(e.message || "Failed to fetch contacts");
     } finally {
       setLoading(false);
     }
@@ -685,6 +700,20 @@ const VideoCallPage = () => {
       setConnectionState("connecting");
       resetConnectionState();
 
+      const participantType = userType === "Client" ? "Doctor" : "Client";
+      const result = await initiateCall(
+        selectedContact._id,
+        participantType,
+        "video",
+        mediaState.cameraEnabled,
+        mediaState.microphoneEnabled
+      );
+
+      if (!result.success || !result.data) {
+        throw new Error(result.message || "Failed to create call");
+      }
+      setCurrentCall(result.data);
+
       if (!localStreamRef.current?.active) {
         await initializeMedia();
         await new Promise((r) => setTimeout(r, 500));
@@ -704,46 +733,13 @@ const VideoCallPage = () => {
       // ── Emit the WebRTC offer first (this is what actually matters)
       socketRef.current.emit("call-offer", {
         offer,
+        callId: result.data._id,
+        roomId: result.data.roomId,
         targetUserId: selectedContact._id,
         callType: "video",
         fromUserId: getCurrentUserId(),
       });
 
-      // ── Then record in DB — but don't let a 400 kill the WebRTC flow
-      try {
-        const participantType = userType === "Client" ? "Doctor" : "Client";
-        const result = await initiateCall(
-          selectedContact._id,
-          participantType,
-          "video",
-          mediaState.cameraEnabled,
-          mediaState.microphoneEnabled
-        );
-        if (result.success && result.data) {
-          console.log("[Call] Call recorded in DB:", result.data._id);
-        }
-      } catch (apiErr) {
-        // 400 "already ongoing call" is OK — the WebRTC offer is already sent
-        console.warn("[Call] DB record failed (non-fatal):", apiErr.message);
-        // Fetch and set currentCall anyway so media toggles work
-        try {
-          await getActiveCalls();
-          const { activeCalls: freshCalls } = useVideoStore.getState();
-          if (freshCalls?.length > 0) {
-            const myCall = freshCalls.find(c =>
-              c.participants?.some(p =>
-                p.userId?._id?.toString() === selectedContact._id?.toString()
-              )
-            );
-            if (myCall) {
-              setCurrentCall(myCall);
-              console.log("[Call] Set currentCall from active calls (after 400):", myCall._id);
-            }
-          }
-        } catch (fetchErr) {
-          console.warn("[Call] Could not fetch active calls:", fetchErr?.message);
-        }
-      }
 
     } catch (e) {
       console.error("[Call] Initiation error:", e);
@@ -756,13 +752,28 @@ const VideoCallPage = () => {
   };
 
   const handleAcceptCall = async (callId) => {
+    if (incomingOffer) {
+      if (incomingOffer.callId) {
+        await acceptCall(incomingOffer.callId, true, true);
+      }
+      const offerToProcess = incomingOffer;
+      setIncomingOffer(null);
+      await handleReceiveOffer({ ...offerToProcess, isIncomingCall: false });
+      return;
+    }
+
     const result = await acceptCall(callId, true, true);
     if (result.success) { setSelectedContact(null); setShowContactList(false); }
   };
 
   const handleRejectCall = async (callId) => {
-    await rejectCall(callId, "User declined");
-    socketRef.current?.emit("call-rejected", { callId });
+    const rejectedCallId = callId || incomingOffer?.callId;
+    const targetUserId = incomingOffer?.fromUserId || remoteUserIdRef.current;
+    if (rejectedCallId) {
+      await rejectCall(rejectedCallId, "User declined");
+    }
+    socketRef.current?.emit("call-rejected", { callId: rejectedCallId, targetUserId });
+    setIncomingOffer(null);
   };
 
   const handleEndCall = async () => {
@@ -915,6 +926,37 @@ const VideoCallPage = () => {
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="flex flex-col sm:flex-row h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+      {incomingOffer && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 px-4">
+          <div className="w-full max-w-sm bg-white rounded-2xl shadow-2xl border border-slate-200 p-6 text-center">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-green-100 flex items-center justify-center">
+              <Video className="w-8 h-8 text-green-600" />
+            </div>
+            <h3 className="text-lg font-bold text-slate-900">Incoming video call</h3>
+            <p className="mt-2 text-sm text-slate-600">
+              {incomingOffer.fromUserName || "Someone"} is requesting a video call.
+            </p>
+            <div className="mt-6 flex items-center justify-center gap-3">
+              <button
+                onClick={() => handleRejectCall(incomingOffer.callId)}
+                disabled={isRejecting || isAccepting}
+                className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-red-500 text-white font-semibold hover:bg-red-600 disabled:opacity-50 transition-colors"
+              >
+                <PhoneOff className="w-4 h-4" />
+                Reject
+              </button>
+              <button
+                onClick={() => handleAcceptCall(incomingOffer.callId)}
+                disabled={isAccepting || isRejecting}
+                className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-green-500 text-white font-semibold hover:bg-green-600 disabled:opacity-50 transition-colors"
+              >
+                <Phone className="w-4 h-4" />
+                Accept
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Sidebar */}
       <div
         className={`${

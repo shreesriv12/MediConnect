@@ -66,7 +66,7 @@ const Navbar = () => {
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className={`${theme === 'dark' ? 'bg-blue-500 hover:bg-blue-600' : 'bg-primary hover:bg-primary-dark'} text-white px-4 py-2 rounded-md text-sm font-medium transition-colors duration-300`}
+                className={`${theme === 'dark' ? 'bg-blue-500 hover:bg-blue-600' : 'bg-blue-600 hover:bg-blue-700'} text-white px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-colors duration-300 whitespace-nowrap`}
                 onClick={() => setIsModalOpen(true)} // Open the modal on click
               >
                 Book Appointment
@@ -111,7 +111,7 @@ const Navbar = () => {
               <div className="pl-3 pr-4 py-2">
                 <button
                   onClick={() => setIsModalOpen(true)}
-                  className={`w-full ${theme === 'dark' ? 'bg-blue-500 hover:bg-blue-600' : 'bg-primary hover:bg-primary-dark'} text-white px-4 py-2 rounded-md text-sm font-medium transition-colors duration-300`}
+                  className={`w-full ${theme === 'dark' ? 'bg-blue-500 hover:bg-blue-600' : 'bg-blue-600 hover:bg-blue-700'} text-white px-4 py-2 rounded-md text-sm font-medium transition-colors duration-300`}
                 >
                   Book Appointment
                 </button>

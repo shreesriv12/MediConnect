@@ -10,6 +10,7 @@ const slotRequestSchema = new mongoose.Schema({
   fee: { type: Number, required: true },
   status: { type: String, enum: ["pending", "accepted", "rejected"], default: "pending" },
   paymentStatus: { type: String, enum: ["unpaid", "paid"], default: "unpaid" },
+  reminderSentAt: { type: Date, default: null },
 }, { timestamps: true });
 
 const SlotRequest = mongoose.model("SlotRequest", slotRequestSchema);

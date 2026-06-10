@@ -67,37 +67,19 @@ const ClientLogin = () => {
   };
 
   return (
-    <div className={`max-w-4xl mx-auto p-6 rounded-lg shadow-md ${
-      theme === 'dark' ? 'bg-gray-800 text-white' : 'bg-white text-gray-800'
-    }`}>
-      <div className={`max-w-md w-full space-y-8 p-8 rounded-xl shadow-md ${
-        theme === 'dark' ? 'bg-gray-800' : 'bg-white'
-      }`}>
-        <div>
-          <h2 className={`mt-6 text-center text-3xl font-extrabold ${
-            theme === 'dark' ? 'text-white' : 'text-gray-900'
-          }`}>
-            Client Login
-          </h2>
-          <p className={`mt-2 text-center text-sm ${
-            theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
-          }`}>
-            Access your client dashboard
-          </p>
+    <div className="w-full space-y-4 sm:space-y-6">
+      {error && (
+        <div className={`p-3 rounded-lg ${
+          theme === 'dark' ? 'bg-red-900/50 text-red-200' : 'bg-red-100 text-red-700'
+        }`} role="alert">
+          <span className="block text-sm">{error}</span>
         </div>
+      )}
         
-        {error && (
-          <div className={`p-3 rounded ${
-            theme === 'dark' ? 'bg-red-900 text-red-200' : 'bg-red-100 text-red-700'
-          }`} role="alert">
-            <span className="block sm:inline">{error}</span>
-          </div>
-        )}
-        
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="space-y-4">
+        <form className="space-y-4 sm:space-y-5" onSubmit={handleSubmit}>
+          <div className="space-y-3 sm:space-y-4">
             <div>
-              <label htmlFor="email" className={`block mb-2 text-sm font-medium ${
+              <label htmlFor="email" className={`block mb-1.5 sm:mb-2 text-sm font-medium ${
                 theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
               }`}>
                 Email address
@@ -110,11 +92,11 @@ const ClientLogin = () => {
                 required
                 value={formData.email}
                 onChange={handleChange}
-                className={`w-full px-3 py-2 rounded-md ${
+                className={`w-full px-3 py-2 text-sm rounded-md ${
                   theme === 'dark' 
                     ? 'bg-gray-700 text-white border-gray-600 focus:border-blue-500' 
                     : 'bg-white text-gray-900 border-gray-300 focus:border-blue-500'
-                } border focus:outline-none focus:ring-1 ${
+                } border focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors ${
                   formErrors.email 
                     ? 'border-red-500' 
                     : theme === 'dark' ? 'border-gray-600' : 'border-gray-300'
@@ -125,7 +107,7 @@ const ClientLogin = () => {
             </div>
             
             <div>
-              <label htmlFor="password" className={`block mb-2 text-sm font-medium ${
+              <label htmlFor="password" className={`block mb-1.5 sm:mb-2 text-sm font-medium ${
                 theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
               }`}>
                 Password
@@ -138,11 +120,11 @@ const ClientLogin = () => {
                 required
                 value={formData.password}
                 onChange={handleChange}
-                className={`w-full px-3 py-2 rounded-md ${
+                className={`w-full px-3 py-2 text-sm rounded-md ${
                   theme === 'dark' 
                     ? 'bg-gray-700 text-white border-gray-600 focus:border-blue-500' 
                     : 'bg-white text-gray-900 border-gray-300 focus:border-blue-500'
-                } border focus:outline-none focus:ring-1 ${
+                } border focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors ${
                   formErrors.password 
                     ? 'border-red-500' 
                     : theme === 'dark' ? 'border-gray-600' : 'border-gray-300'
@@ -153,30 +135,23 @@ const ClientLogin = () => {
             </div>
           </div>
 
-          <div>
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              type="submit"
-              disabled={isLoading}
-              className={`group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white ${
-                theme === 'dark'
-                  ? 'bg-blue-500 hover:bg-blue-600'
-                  : 'bg-blue-600 hover:bg-blue-700'
-              } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-300 ${
-                isLoading ? 'opacity-70 cursor-not-allowed' : ''
-              }`}
-            >
-              {isLoading ? (
-                <span className="flex items-center">Signing in...</span>
-              ) : (
-                "Sign in"
-              )}
-            </motion.button>
-          </div>
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            type="submit"
+            disabled={isLoading}
+            className={`w-full py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white ${
+              theme === 'dark'
+                ? 'bg-blue-500 hover:bg-blue-600'
+                : 'bg-blue-600 hover:bg-blue-700'
+            } focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors duration-300 ${
+              isLoading ? 'opacity-70 cursor-not-allowed' : ''
+            }`}
+          >
+            {isLoading ? 'Signing in...' : 'Sign in'}
+          </motion.button>
         </form>
       </div>
-    </div>
   );
 };
 

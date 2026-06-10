@@ -37,6 +37,9 @@ const HeroSection = () => {
     const scene = new THREE.Scene();
     sceneRef.current = scene;
     
+    // Check if device is mobile for optimization
+    const isMobile = window.innerWidth < 768;
+    
     const sizes = {
       width: window.innerWidth,
       height: window.innerHeight
@@ -49,18 +52,18 @@ const HeroSection = () => {
     camera.position.y = 0.5;
     scene.add(camera);
     
-    // High-quality renderer
+    // Optimized renderer - disable shadow maps on mobile
     const renderer = new THREE.WebGLRenderer({
       canvas: canvas,
       alpha: true,
-      antialias: true,
+      antialias: !isMobile,  // Disable on mobile for performance
       powerPreference: "high-performance"
     });
     rendererRef.current = renderer;
     renderer.setSize(sizes.width, sizes.height);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    // Lower pixel ratio on mobile for better performance
+    renderer.setPixelRatio(isMobile ? 1 : Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = !isMobile;  // Disable shadows on mobile
     
     // Professional color palette - adjust based on theme
     const isDarkTheme = theme === 'dark';
@@ -72,8 +75,12 @@ const HeroSection = () => {
       highlight: new THREE.Color(isDarkTheme ? '#60a5fa' : '#80deea')   // Light cyan / lighter blue
     };
     
-    // Main sphere - more refined
-    const sphereGeometry = new THREE.SphereGeometry(3.5, 96, 96); // Higher polygon count
+    // Optimized geometry - reduced polygon count for better performance
+    const sphereSegments = isMobile ? 16 : 32;
+    const particlesCount = isMobile ? 80 : 150;  // Reduced particles
+    
+    // Main sphere - optimized
+    const sphereGeometry = new THREE.SphereGeometry(3.5, sphereSegments, sphereSegments);
     const sphereMaterial = new THREE.MeshPhysicalMaterial({
       color: colors.primary,
       wireframe: true,
@@ -84,11 +91,11 @@ const HeroSection = () => {
     });
     const mainSphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
     mainSphere.position.set(4.5, 0, 0);
-    mainSphere.castShadow = true;
+    mainSphere.castShadow = !isMobile;
     scene.add(mainSphere);
     
-    // Glow sphere with better material
-    const glowGeometry = new THREE.SphereGeometry(4, 96, 96);
+    // Glow sphere - optimized
+    const glowGeometry = new THREE.SphereGeometry(4, sphereSegments, sphereSegments);
     const glowMaterial = new THREE.MeshPhysicalMaterial({
       color: colors.secondary,
       wireframe: true,
@@ -101,8 +108,8 @@ const HeroSection = () => {
     glowSphere.position.set(4.5, 0, 0);
     scene.add(glowSphere);
     
-    // Inner core for depth
-    const coreGeometry = new THREE.SphereGeometry(2.8, 64, 64);
+    // Inner core for depth - simplified
+    const coreGeometry = new THREE.SphereGeometry(2.8, sphereSegments, sphereSegments);
     const coreMaterial = new THREE.MeshPhysicalMaterial({
       color: colors.accent,
       wireframe: false,
@@ -115,9 +122,8 @@ const HeroSection = () => {
     coreSphere.position.set(4.5, 0, 0);
     scene.add(coreSphere);
     
-    // Enhanced particles system
+    // Optimized particles system
     const particlesGeometry = new THREE.BufferGeometry();
-    const particlesCount = 350; // More particles
     
     const posArray = new Float32Array(particlesCount * 3);
     const scaleArray = new Float32Array(particlesCount);
@@ -147,57 +153,73 @@ const HeroSection = () => {
     const particlesMesh = new THREE.Points(particlesGeometry, particlesMaterial);
     scene.add(particlesMesh);
     
-    // Professional lighting setup - adjusted for theme
+    // Professional lighting setup - optimized for mobile
     const ambientLight = new THREE.AmbientLight(0xffffff, isDarkTheme ? 0.2 : 0.3);
     scene.add(ambientLight);
     
     const directionalLight = new THREE.DirectionalLight(0xffffff, isDarkTheme ? 0.6 : 0.8);
     directionalLight.position.set(5, 5, 5);
-    directionalLight.castShadow = true;
+    directionalLight.castShadow = !isMobile;
     scene.add(directionalLight);
     
+    // Reduce lights on mobile - only add essential lights
     const pointLight1 = new THREE.PointLight(colors.primary.getHex(), isDarkTheme ? 1.2 : 1.5);
     pointLight1.position.set(3, 4, 5);
     scene.add(pointLight1);
     
-    const pointLight2 = new THREE.PointLight(colors.secondary.getHex(), isDarkTheme ? 0.8 : 1);
-    pointLight2.position.set(-4, -2, -3);
-    scene.add(pointLight2);
+    // Skip second and third point lights on mobile for better performance
+    if (!isMobile) {
+      const pointLight2 = new THREE.PointLight(colors.secondary.getHex(), isDarkTheme ? 0.8 : 1);
+      pointLight2.position.set(-4, -2, -3);
+      scene.add(pointLight2);
+      
+      const pointLight3 = new THREE.PointLight(colors.highlight.getHex(), isDarkTheme ? 0.5 : 0.7);
+      pointLight3.position.set(0, 3, -5);
+      scene.add(pointLight3);
+    }
     
-    const pointLight3 = new THREE.PointLight(colors.highlight.getHex(), isDarkTheme ? 0.5 : 0.7);
-    pointLight3.position.set(0, 3, -5);
-    scene.add(pointLight3);
-    
-    // Enhanced GSAP Animations
+    // Enhanced GSAP Animations - optimized for performance
     const animations = [];
     
-    // Main sphere rotation - more natural movement
-    animations.push(
-      gsap.to(mainSphere.rotation, {
-        y: Math.PI * 2,
-        duration: 35,
-        ease: "power1.inOut",
-        repeat: -1
-      })
-    );
-    
-    animations.push(
-      gsap.to(mainSphere.rotation, {
-        x: Math.PI * 0.2,
-        duration: 20,
-        ease: "sine.inOut",
-        yoyo: true,
-        repeat: -1
-      })
-    );
+    // Main sphere rotation - simplified on mobile
+    if (!isMobile) {
+      animations.push(
+        gsap.to(mainSphere.rotation, {
+          y: Math.PI * 2,
+          duration: 35,
+          ease: "power1.inOut",
+          repeat: -1
+        })
+      );
+      
+      animations.push(
+        gsap.to(mainSphere.rotation, {
+          x: Math.PI * 0.2,
+          duration: 20,
+          ease: "sine.inOut",
+          yoyo: true,
+          repeat: -1
+        })
+      );
+    } else {
+      // Simpler animation for mobile
+      animations.push(
+        gsap.to(mainSphere.rotation, {
+          y: Math.PI * 2,
+          duration: 40,
+          ease: "power1.inOut",
+          repeat: -1
+        })
+      );
+    }
     
     // Subtle scale pulsing for main sphere
     animations.push(
       gsap.to(mainSphere.scale, {
-        x: 1.05,
-        y: 1.05,
-        z: 1.05,
-        duration: 8,
+        x: 1.02,
+        y: 1.02,
+        z: 1.02,
+        duration: 10,
         ease: "sine.inOut",
         yoyo: true,
         repeat: -1
@@ -214,21 +236,23 @@ const HeroSection = () => {
       })
     );
     
-    animations.push(
-      gsap.to(glowSphere.rotation, {
-        x: -Math.PI * 0.15,
-        duration: 25,
-        ease: "sine.inOut",
-        yoyo: true,
-        repeat: -1
-      })
-    );
+    if (!isMobile) {
+      animations.push(
+        gsap.to(glowSphere.rotation, {
+          x: -Math.PI * 0.15,
+          duration: 25,
+          ease: "sine.inOut",
+          yoyo: true,
+          repeat: -1
+        })
+      );
+    }
     
-    // Core animations
+    // Core animations - simplified
     animations.push(
       gsap.to(coreSphere.rotation, {
         y: Math.PI * 2,
-        duration: 15,
+        duration: 20,
         ease: "power1.inOut",
         repeat: -1
       })
@@ -236,31 +260,10 @@ const HeroSection = () => {
     
     animations.push(
       gsap.to(coreSphere.scale, {
-        x: 1.1,
-        y: 1.1,
-        z: 1.1,
-        duration: 4,
-        ease: "sine.inOut",
-        yoyo: true,
-        repeat: -1
-      })
-    );
-    
-    // Smooth camera movement
-    animations.push(
-      gsap.to(camera.position, {
-        y: 0.3,
-        duration: 10,
-        ease: "sine.inOut",
-        yoyo: true,
-        repeat: -1
-      })
-    );
-    
-    animations.push(
-      gsap.to(camera.position, {
-        x: 2.7,
-        duration: 15,
+        x: 1.05,
+        y: 1.05,
+        z: 1.05,
+        duration: 5,
         ease: "sine.inOut",
         yoyo: true,
         repeat: -1
@@ -271,16 +274,6 @@ const HeroSection = () => {
     animations.push(
       gsap.to(particlesMesh.rotation, {
         y: Math.PI * 0.15,
-        duration: 40,
-        ease: "sine.inOut",
-        yoyo: true,
-        repeat: -1
-      })
-    );
-    
-    animations.push(
-      gsap.to(particlesMesh.rotation, {
-        x: Math.PI * 0.1,
         duration: 45,
         ease: "sine.inOut",
         yoyo: true,
@@ -299,17 +292,19 @@ const HeroSection = () => {
       });
     };
     
-    // Enhanced mouse interaction
+    // Enhanced mouse interaction - only on desktop
     let mouseX = 0;
     let mouseY = 0;
     
     const handleMouseMove = (event) => {
-      if (!isVisible) return;
+      if (!isVisible || isMobile) return;
       mouseX = (event.clientX / sizes.width - 0.5) * 0.2;
       mouseY = (event.clientY / sizes.height - 0.5) * 0.15;
     };
     
-    document.addEventListener('mousemove', handleMouseMove);
+    if (!isMobile) {
+      document.addEventListener('mousemove', handleMouseMove);
+    }
     
     // Resize handling
     const handleResize = () => {
@@ -325,26 +320,36 @@ const HeroSection = () => {
     
     window.addEventListener('resize', handleResize);
     
-    // Enhanced animation loop with mouse interaction
+    // Optimized animation loop - reduced frame rate on mobile
+    let frameCount = 0;
+    const frameSkip = isMobile ? 2 : 1; // Skip frames on mobile
+    
     const animate = () => {
       if (isVisible) {
-        // Apply subtle mouse movement
-        const targetX = mainSphere.position.x + mouseX * 0.5;
-        const targetY = mainSphere.position.y + mouseY * 0.5;
+        frameCount++;
         
-        mainSphere.position.x += (targetX - mainSphere.position.x) * 0.05;
-        mainSphere.position.y += (targetY - mainSphere.position.y) * 0.05;
-        
-        glowSphere.position.x = mainSphere.position.x;
-        glowSphere.position.y = mainSphere.position.y;
-        
-        coreSphere.position.x = mainSphere.position.x;
-        coreSphere.position.y = mainSphere.position.y;
-        
-        // Subtle particle movement
-        particlesMesh.rotation.y += 0.0005;
-        
-        renderer.render(scene, camera);
+        // Only update on certain frames on mobile
+        if (frameCount % frameSkip === 0) {
+          // Apply subtle mouse movement only on desktop
+          if (!isMobile) {
+            const targetX = mainSphere.position.x + mouseX * 0.5;
+            const targetY = mainSphere.position.y + mouseY * 0.5;
+            
+            mainSphere.position.x += (targetX - mainSphere.position.x) * 0.05;
+            mainSphere.position.y += (targetY - mainSphere.position.y) * 0.05;
+            
+            glowSphere.position.x = mainSphere.position.x;
+            glowSphere.position.y = mainSphere.position.y;
+          }
+          
+          coreSphere.position.x = mainSphere.position.x;
+          coreSphere.position.y = mainSphere.position.y;
+          
+          // Subtle particle movement
+          particlesMesh.rotation.y += 0.0005;
+          
+          renderer.render(scene, camera);
+        }
       }
       
       animationFrameRef.current = window.requestAnimationFrame(animate);
@@ -365,7 +370,9 @@ const HeroSection = () => {
       
       // Clean up event listeners
       window.removeEventListener('resize', handleResize);
-      document.removeEventListener('mousemove', handleMouseMove);
+      if (!isMobile) {
+        document.removeEventListener('mousemove', handleMouseMove);
+      }
       
       // Kill all GSAP animations
       animations.forEach(anim => anim.kill());
@@ -407,8 +414,8 @@ const HeroSection = () => {
   }, [isVisible]);
   
   return (
-    <section ref={sectionRef} id="home" className="relative h-screen flex items-center overflow-hidden">
-      <canvas ref={canvasRef} className="absolute inset-0 z-0"></canvas>
+    <section ref={sectionRef} id="home" className="relative h-screen sm:h-screen min-h-96 flex items-center overflow-hidden">
+      <canvas ref={canvasRef} className="absolute inset-0 z-0 w-full h-full"></canvas>
       
       {/* Adjust gradient overlay based on theme */}
       <div className={`absolute inset-0 ${
@@ -417,7 +424,7 @@ const HeroSection = () => {
           : 'bg-gradient-to-r from-gray-900/40 via-gray-900/20 to-gray-900/10'
       } z-0`}></div>
       
-      <div className="container mx-auto px-6 z-10 relative">
+      <div className="container mx-auto px-4 sm:px-6 z-10 relative">
         <div className="max-w-3xl">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -427,7 +434,7 @@ const HeroSection = () => {
             <motion.span 
               className={`inline-block ${
                 theme === 'dark' ? 'text-blue-400' : 'text-blue-600'
-              } font-semibold mb-3 text-lg tracking-wide transition-colors duration-300`}
+              } font-semibold mb-3 text-sm sm:text-lg tracking-wide transition-colors duration-300`}
             >
               Welcome to MediConnect
             </motion.span>
@@ -437,9 +444,9 @@ const HeroSection = () => {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.2, ease: "easeOut" }}
-            className={`text-4xl md:text-6xl font-bold ${
+            className={`text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold ${
               theme === 'dark' ? 'text-white' : 'text-gray-900'
-            } mb-6 leading-tight transition-colors duration-300`}
+            } mb-4 sm:mb-6 leading-tight transition-colors duration-300`}
           >
             Connecting You With Healthcare Professionals
           </motion.h1>
@@ -448,14 +455,14 @@ const HeroSection = () => {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.4, ease: "easeOut" }}
-            className={`text-xl ${
+            className={`text-base sm:text-lg md:text-xl ${
               theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-            } mb-8 leading-relaxed transition-colors duration-300`}
+            } mb-6 sm:mb-8 leading-relaxed transition-colors duration-300`}
           >
             Schedule appointments with qualified doctors online, anytime, anywhere.
           </motion.p>
           
-          <div className="flex flex-wrap gap-4">
+          <div className="flex flex-wrap gap-3 sm:gap-4">
             <motion.button 
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
@@ -466,7 +473,7 @@ const HeroSection = () => {
                 theme === 'dark' 
                   ? 'bg-blue-600 hover:bg-blue-700' 
                   : 'bg-blue-600 hover:bg-blue-700'
-              } text-white font-bold py-3 px-8 rounded-lg shadow-lg transform transition-all duration-300`}
+              } text-white font-bold py-2 sm:py-3 px-6 sm:px-8 rounded-lg shadow-lg transform transition-all duration-300 text-sm sm:text-base`}
             >
               Find a Doctor
             </motion.button>
@@ -485,7 +492,7 @@ const HeroSection = () => {
                 theme === 'dark'
                   ? 'bg-slate-800 text-blue-400 border-2 border-blue-500'
                   : 'bg-white text-blue-600 border-2 border-blue-600'
-              } font-bold py-3 px-8 rounded-lg shadow-md transform transition-all duration-300`}
+              } font-bold py-2 sm:py-3 px-6 sm:px-8 rounded-lg shadow-md transform transition-all duration-300 text-sm sm:text-base`}
             >
               Learn More
             </motion.button>

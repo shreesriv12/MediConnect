@@ -15,11 +15,29 @@ import {
   toMessageReceivePayload,
 } from "../services/chatSession.service.js";
 import { askQuestionInSession } from "../services/ragChat.service.js";
+import { hasBookedAppointmentBetween } from "../services/appointmentAccess.service.js";
+import { notifyChatMessage, notifyVideoCallInvite } from "../services/notification.service.js";
 
 // Store connected users with enhanced tracking
 const connectedUsers = new Map();
 const userSocketMap = new Map(); // userId => socketId mapping
 const activeCallRooms = new Map(); // roomId => { participants, callData }
+
+const getOtherChatParticipant = (chat, currentUserId) => {
+  return chat?.participants?.find((participant) => participant.userId.toString() !== currentUserId.toString());
+};
+
+const ensureBookedChatAccess = async (chat, currentUserId, currentUserType) => {
+  const otherParticipant = getOtherChatParticipant(chat, currentUserId);
+  if (!otherParticipant) return false;
+
+  return hasBookedAppointmentBetween({
+    userAId: currentUserId,
+    userAType: currentUserType,
+    userBId: otherParticipant.userId,
+    userBType: otherParticipant.userType
+  });
+};
 
 // Authenticate socket connection
 const authenticateSocket = async (socket, token) => {
@@ -114,6 +132,11 @@ const initializeSocket = (io) => {
       try {
         const chat = await Chat.findById(chatId);
         if (chat && chat.participants.some(p => p.userId.toString() === userId)) {
+          const hasBooking = await ensureBookedChatAccess(chat, socket.user._id, socket.userType);
+          if (!hasBooking) {
+            socket.emit('error', { message: 'Chat is available only after a slot is booked between this doctor and patient' });
+            return;
+          }
           socket.join(chatId);
           socket.emit('joinedChat', { chatId, status: 'joined' });
           console.log(`[Chat] User ${socket.user.name} joined chat: ${chatId}`);
@@ -157,6 +180,12 @@ const initializeSocket = (io) => {
           return;
         }
 
+        const hasBooking = await ensureBookedChatAccess(chat, socket.user._id, socket.userType);
+        if (!hasBooking) {
+          socket.emit('error', { message: 'Messages are available only after a slot is booked between this doctor and patient' });
+          return;
+        }
+
         const newMessage = {
           content,
           messageType,
@@ -186,6 +215,20 @@ const initializeSocket = (io) => {
           sender: socket.userType
         });
 
+        const otherParticipant = getOtherChatParticipant(chat, userId);
+        if (otherParticipant) {
+          const notification = await notifyChatMessage({
+            recipientId: otherParticipant.userId,
+            recipientModel: otherParticipant.userType,
+            senderId: socket.user._id,
+            senderModel: socket.userType,
+            senderName: socket.user.name,
+            chatId,
+            message: content
+          });
+          io.to(`user_${otherParticipant.userId}`).emit('notification:new', notification);
+        }
+
         console.log(`[Chat] Message sent in chat ${chatId} by ${socket.user.name}`);
       } catch (error) {
         console.error('[Chat] Error sending message:', error);
@@ -212,6 +255,13 @@ const initializeSocket = (io) => {
         }
 
         const chat = await findChatForParticipant(sessionId, socket.user._id);
+        const hasBooking = await ensureBookedChatAccess(chat, socket.user._id, socket.userType);
+        if (!hasBooking) {
+          const response = { success: false, message: 'Messages are available only after a slot is booked between this doctor and patient' };
+          callback?.(response);
+          socket.emit('error', response);
+          return;
+        }
 
         const savedMessage = await appendChatMessage(sessionId, {
           content: message.trim(),
@@ -221,6 +271,20 @@ const initializeSocket = (io) => {
         });
 
         emitChatMessage(io, sessionId, savedMessage, socket.userType);
+
+        const otherParticipant = getOtherChatParticipant(chat, userId);
+        if (otherParticipant) {
+          const notification = await notifyChatMessage({
+            recipientId: otherParticipant.userId,
+            recipientModel: otherParticipant.userType,
+            senderId: socket.user._id,
+            senderModel: socket.userType,
+            senderName: socket.user.name,
+            chatId: sessionId,
+            message: message.trim()
+          });
+          io.to(`user_${otherParticipant.userId}`).emit('notification:new', notification);
+        }
 
         callback?.({
           success: true,
@@ -255,7 +319,14 @@ const initializeSocket = (io) => {
           return;
         }
 
-        await findChatForParticipant(sessionId, socket.user._id);
+        const chat = await findChatForParticipant(sessionId, socket.user._id);
+        const hasBooking = await ensureBookedChatAccess(chat, socket.user._id, socket.userType);
+        if (!hasBooking) {
+          const response = { success: false, message: 'File sharing is available only after a slot is booked between this doctor and patient' };
+          callback?.(response);
+          socket.emit('error', response);
+          return;
+        }
         emitFileReceive(io, uploadedFile);
 
         callback?.({
@@ -282,6 +353,15 @@ const initializeSocket = (io) => {
         const { sessionId, question, replyTo } = data || {};
         if (!sessionId || !question?.trim()) {
           const response = { success: false, message: 'sessionId and question are required' };
+          callback?.(response);
+          socket.emit('query:error', response);
+          return;
+        }
+
+        const chat = await findChatForParticipant(sessionId, socket.user._id);
+        const hasBooking = await ensureBookedChatAccess(chat, socket.user._id, socket.userType);
+        if (!hasBooking) {
+          const response = { success: false, message: 'Document Q&A is available only after a slot is booked between this doctor and patient' };
           callback?.(response);
           socket.emit('query:error', response);
           return;
@@ -331,10 +411,40 @@ const initializeSocket = (io) => {
       const targetConnection = connectedUsers.get(targetUserId);
 
       if (targetConnection && targetConnection.socketId) {
+        const hasBooking = await hasBookedAppointmentBetween({
+          userAId: socket.user._id,
+          userAType: socket.userType,
+          userBId: targetUserId,
+          userBType: targetConnection.userType
+        });
+
+        if (!hasBooking) {
+          socket.emit('call-failed', {
+            reason: 'Video calls are available only after a slot is booked between this doctor and patient',
+            targetUserId: data.targetUserId
+          });
+          return;
+        }
+
+        if (!data.callId) {
+          const notification = await notifyVideoCallInvite({
+            recipientId: targetUserId,
+            recipientModel: targetConnection.userType,
+            senderId: socket.user._id,
+            senderModel: socket.userType,
+            senderName: socket.user.name,
+            callId: data.callId || null,
+            roomId: data.roomId || null
+          });
+          io.to(`user_${targetUserId}`).emit('notification:new', notification);
+        }
+
         // Single unified emit containing everything the callee needs
         // This prevents the race condition from separate incoming-call and offer events
         io.to(targetConnection.socketId).emit('offer', {
           offer: data.offer,
+          callId: data.callId || null,
+          roomId: data.roomId || null,
           fromUserId: userId,
           fromUserName: socket.user.name,
           fromUserType: socket.userType,

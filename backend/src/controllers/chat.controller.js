@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from "uuid";
 import Chat from "../models/chat.model.js";
 import Doctor from "../models/doctor.models.js";
 import Client from "../models/client.model.js";
+import SlotRequest from "../models/slotRequest.model.js";
 import UploadedFile from "../models/uploadedFile.model.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
@@ -16,6 +17,8 @@ import {
 } from "../services/chatSession.service.js";
 import { askQuestionInSession } from "../services/ragChat.service.js";
 import { enqueueRagIngestion } from "../jobs/ragQueue.js";
+import { hasBookedAppointmentBetween } from "../services/appointmentAccess.service.js";
+import { notifyChatMessage } from "../services/notification.service.js";
 
 const RAG_SUPPORTED_EXTENSIONS = new Set([
   ".pdf",
@@ -68,6 +71,17 @@ const createOrGetChat = asyncHandler(async (req, res) => {
     ? { userId: req.doctor._id, userType: "Doctor" }
     : { userId: req.client._id, userType: "Client" };
 
+  const hasBooking = await hasBookedAppointmentBetween({
+    userAId: currentUser.userId,
+    userAType: currentUser.userType,
+    userBId: participantId,
+    userBType: participantType
+  });
+
+  if (!hasBooking) {
+    throw new ApiError(403, "Chat is available only after a slot is booked between this doctor and patient");
+  }
+
   const Model = participantType === "Doctor" ? Doctor : Client;
   const participant = await Model.findById(participantId);
   if (!participant) {
@@ -104,6 +118,7 @@ const createOrGetChat = asyncHandler(async (req, res) => {
 const getUserChats = asyncHandler(async (req, res) => {
   const currentUser = req.doctor ? req.doctor._id : req.client._id;
 
+  const currentUserType = req.doctor ? "Doctor" : "Client";
   const chats = await Chat.find({
     "participants.userId": currentUser,
     isActive: true,
@@ -112,9 +127,66 @@ const getUserChats = asyncHandler(async (req, res) => {
     .sort({ lastMessage: -1 })
     .limit(50);
 
+  const allowedChats = [];
+  for (const chat of chats) {
+    const otherParticipant = chat.participants.find(
+      (p) => String(p.userId._id || p.userId) !== currentUser.toString()
+    );
+    if (!otherParticipant) continue;
+
+    const hasBooking = await hasBookedAppointmentBetween({
+      userAId: currentUser,
+      userAType: currentUserType,
+      userBId: otherParticipant.userId._id || otherParticipant.userId,
+      userBType: otherParticipant.userType
+    });
+
+    if (hasBooking) allowedChats.push(chat);
+  }
+
   return res
     .status(200)
-    .json(new ApiResponse(200, chats, "Chats retrieved successfully"));
+    .json(new ApiResponse(200, allowedChats, "Chats retrieved successfully"));
+});
+
+const getBookedChatContacts = asyncHandler(async (req, res) => {
+  const isDoctor = Boolean(req.doctor);
+  const currentUserId = isDoctor ? req.doctor._id : req.client._id;
+
+  const bookings = await SlotRequest.find({
+    [isDoctor ? "doctorId" : "patientId"]: currentUserId,
+    status: { $ne: "rejected" },
+    $or: [
+      { paymentStatus: "paid" },
+      { status: "accepted" },
+      { status: "pending" }
+    ]
+  })
+    .populate("doctorId", "name email avatar specialization experience degree age gender phone")
+    .populate("patientId", "name email avatar age gender phone")
+    .sort({ createdAt: -1 });
+
+  const contactsById = new Map();
+
+  bookings.forEach((booking) => {
+    const contact = isDoctor ? booking.patientId : booking.doctorId;
+    if (!contact?._id) return;
+
+    contactsById.set(contact._id.toString(), {
+      ...contact.toObject(),
+      latestBooking: {
+        slotRequestId: booking._id,
+        date: booking.date,
+        time: booking.time,
+        status: booking.status,
+        paymentStatus: booking.paymentStatus
+      }
+    });
+  });
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, [...contactsById.values()], "Booked chat contacts fetched successfully"));
 });
 
 // ─── Send message ────────────────────────────────────────────────────────────
@@ -134,11 +206,26 @@ const sendMessage = asyncHandler(async (req, res) => {
   if (!chat) throw new ApiError(404, "Chat not found");
 
   const currentUser = req.doctor ? req.doctor._id : req.client._id;
+  const currentUserType = req.doctor ? "Doctor" : "Client";
   const isParticipant = chat.participants.some(
     (p) => p.userId.toString() === currentUser.toString()
   );
   if (!isParticipant) {
     throw new ApiError(403, "You are not a participant in this chat");
+  }
+
+  const otherParticipant = chat.participants.find(
+    (p) => p.userId.toString() !== currentUser.toString()
+  );
+  const hasBooking = otherParticipant && await hasBookedAppointmentBetween({
+    userAId: currentUser,
+    userAType: currentUserType,
+    userBId: otherParticipant.userId,
+    userBType: otherParticipant.userType
+  });
+
+  if (!hasBooking) {
+    throw new ApiError(403, "Messages are available only after a slot is booked between this doctor and patient");
   }
 
   const replyTo = buildReplyToSnapshot(chat, req.body.replyTo);
@@ -236,6 +323,19 @@ const sendMessage = asyncHandler(async (req, res) => {
     message: messageForClient,
     sender: req.doctor ? "Doctor" : "Client",
   });
+
+  if (otherParticipant) {
+    const notification = await notifyChatMessage({
+      recipientId: otherParticipant.userId,
+      recipientModel: otherParticipant.userType,
+      senderId: currentUser,
+      senderModel: currentUserType,
+      senderName: req.doctor?.name || req.client?.name,
+      chatId,
+      message: messageForClient.content
+    });
+    req.io?.to(`user_${otherParticipant.userId}`).emit("notification:new", notification);
+  }
 
   if (ragUploadedFile) {
     emitFileReceive(req.io, ragUploadedFile);
@@ -406,6 +506,7 @@ const deleteMessage = asyncHandler(async (req, res) => {
 
 export {
   createOrGetChat,
+  getBookedChatContacts,
   getUserChats,
   sendMessage,
   getChatMessages,
