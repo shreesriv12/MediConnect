@@ -3,7 +3,7 @@ import "dotenv/config";  // Load environment variables
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import http from "http";   
-import axios from "axios";  // For Hugging Face
+import axios from "axios";
 import nodemailer from "nodemailer";
 import connectDB from "./src/config/db.js";
 import { Server } from "socket.io";
@@ -47,85 +47,129 @@ app.use(cookieParser());
 // Serve static files (e.g. uploaded avatars)
 app.use(express.static("public"));
 
-// Enable CORS - Allow multiple origins for dev and production
-const allowedOrigins = [
-  "http://localhost:5173",           // Local dev - Vite
-  "http://localhost:3000",           // Alternative local port
-  "http://localhost:5000",           // Backend local
-  "https://mediconnect-bay.vercel.app", // Production frontend
-  process.env.CORS_ORIGIN            // Environment variable (if set)
-].filter(Boolean); // Remove undefined values
-
-app.use(cors({
-  origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('CORS not allowed'));
-    }
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  optionsSuccessStatus: 200
-}));
+app.use(cors(corsOptions));
 
 // These must come BEFORE routes
 app.use(express.json({ limit: "16kb" }));
 app.use(express.urlencoded({ extended: true, limit: "16kb" }));
 
-// === Hugging Face Chat Endpoint ===
-const HUGGING_FACE_TOKEN = process.env.HUGGING_FACE_TOKEN;
-const MODEL_URL = 'https://api-inference.huggingface.co/models/facebook/blenderbot-400M-distill';
+// === Dashboard Chatbot Endpoint ===
 const chatHistory = {};
+const MAX_CHATBOT_HISTORY = 80;
+const GROQ_CHAT_MODEL = process.env.GROQ_MODEL || "llama-3.1-8b-instant";
+const GROQ_CHAT_BASE_URL =
+  process.env.GROQ_BASE_URL || "https://api.groq.com/openai/v1";
+const DASHBOARD_CHAT_TIMEOUT_MS =
+  Number(process.env.DASHBOARD_CHAT_TIMEOUT_MS) || 15000;
+
+const createChatbotMessage = (role, content) => ({
+  id: `${role}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+  role,
+  content,
+  createdAt: new Date().toISOString(),
+});
+
+const getChatbotHistory = (userId) => chatHistory[userId] || [];
+
+const appendChatbotMessages = (userId, messages) => {
+  chatHistory[userId] = [...getChatbotHistory(userId), ...messages].slice(
+    -MAX_CHATBOT_HISTORY
+  );
+  return chatHistory[userId];
+};
 
 app.post('/chat', async (req, res) => {
   try {
     const { userId, message } = req.body;
-    if (!userId || !message) {
+    const trimmedMessage = String(message || "").trim();
+
+    if (!userId || !trimmedMessage) {
       return res.status(400).json({ error: 'Missing userId or message' });
     }
 
-    if (!chatHistory[userId]) chatHistory[userId] = [];
-    chatHistory[userId].push({ role: 'user', content: message });
+    const userMessage = createChatbotMessage('user', trimmedMessage);
+    const botResponse = await getDashboardAssistantResponse(
+      trimmedMessage,
+      getChatbotHistory(userId)
+    );
+    const assistantMessage = createChatbotMessage('assistant', botResponse);
+    const history = appendChatbotMessages(userId, [userMessage, assistantMessage]);
 
-    const botResponse = await getHuggingFaceResponse(message);
-    chatHistory[userId].push({ role: 'assistant', content: botResponse });
-
-    res.json({ response: botResponse });
+    res.json({
+      response: botResponse,
+      message: assistantMessage,
+      history,
+    });
   } catch (error) {
     console.error('Chat error:', error);
     res.status(500).json({ error: 'Failed to process chat message' });
   }
 });
 
-async function getHuggingFaceResponse(message) {
-  try {
-    if (!HUGGING_FACE_TOKEN) return getSimpleResponse(message);
-    
-    const response = await axios({
-      method: 'post',
-      url: MODEL_URL,
-      headers: { 
-        'Authorization': `Bearer ${HUGGING_FACE_TOKEN}`,
-        'Content-Type': 'application/json'
-      },
-      data: { inputs: message },
-      timeout: 10000
-    });
+app.get('/chat/:userId/history', (req, res) => {
+  const { userId } = req.params;
 
-    if (response.data?.generated_text) return response.data.generated_text;
-    if (Array.isArray(response.data) && response.data[0]?.generated_text) return response.data[0].generated_text;
-    if (Array.isArray(response.data) && response.data[0]?.text) return response.data[0].text;
-    if (response.data?.conversation?.generated_responses) {
-      const responses = response.data.conversation.generated_responses;
-      return responses[responses.length - 1];
+  if (!userId) {
+    return res.status(400).json({ error: 'Missing userId' });
+  }
+
+  res.json({
+    messages: getChatbotHistory(userId),
+  });
+});
+
+async function getDashboardAssistantResponse(message, history = []) {
+  try {
+    if (!process.env.GROQ_API_KEY) {
+      return getSimpleResponse(message);
+    }
+    
+    const recentHistory = history
+      .slice(-12)
+      .filter((item) => item?.content)
+      .map((item) => ({
+        role: item.role === "user" ? "user" : "assistant",
+        content: item.content,
+      }));
+
+    const response = await axios.post(
+      `${GROQ_CHAT_BASE_URL.replace(/\/+$/, "")}/chat/completions`,
+      {
+        model: GROQ_CHAT_MODEL,
+        temperature: 0.2,
+        max_tokens: Number(process.env.DASHBOARD_CHAT_MAX_TOKENS) || 500,
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are MediConnect Assistant inside a healthcare dashboard. Help users navigate real app actions: booking appointments, viewing schedules, opening Messages, starting video calls, finding doctors, nearby clinics, medicine search, and profile/payment pages. Keep replies concise, friendly, and plain text with no Markdown. Do not invent buttons or pages. Do not diagnose; for urgent symptoms, advise contacting a doctor or emergency services.",
+          },
+          ...recentHistory,
+          {
+            role: "user",
+            content: message,
+          },
+        ],
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        timeout: DASHBOARD_CHAT_TIMEOUT_MS,
+      }
+    );
+
+    const content = response.data?.choices?.[0]?.message?.content?.trim();
+    if (content) {
+      return content;
     }
 
     return getSimpleResponse(message);
   } catch (error) {
-    console.error('Hugging Face API error:', error.message);
+    console.error("Groq dashboard chat error:", {
+      message: error.response?.data?.error?.message || error.message,
+    });
     return getSimpleResponse(message);
   }
 }
