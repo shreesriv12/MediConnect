@@ -1,5 +1,7 @@
 import SlotRequest from '../models/slotRequest.model.js';
 import Schedule from '../models/schedule.model.js';
+import { createAndLockSlotRequest } from '../services/slotBooking.service.js';
+import { notifyDoctorSlotBooked } from '../services/notification.service.js';
 
 export const requestSlot = async (req, res) => {
   try {
@@ -19,40 +21,25 @@ export const requestSlot = async (req, res) => {
       return res.status(400).json({ message: "doctorId, scheduleId, and slotIndex are required" });
     }
 
-    const schedule = await Schedule.findById(scheduleId);
-    if (!schedule) {
-      console.error('Schedule not found for ID:', scheduleId);
-      return res.status(404).json({ message: "Schedule not found" });
-    }
-
-    const slot = schedule.slots[slotIndex];
-    if (!slot) {
-      console.error('Slot index invalid:', slotIndex, 'Slots length:', schedule.slots.length);
-      return res.status(400).json({ message: "Slot index invalid" });
-    }
-    if (slot.isBooked) {
-      console.error('Slot already booked:', slotIndex);
-      return res.status(400).json({ message: "Slot not available" });
-    }
-
-    const newRequest = await SlotRequest.create({
+    const { request: newRequest } = await createAndLockSlotRequest({
       doctorId,
       patientId,
       scheduleId,
-      slotIndex,
-      date: schedule.date,
-      time: slot.time,
-      fee: slot.fee
+      slotIndex
     });
 
-    slot.requestId = newRequest._id;
-    await schedule.save();
+    await notifyDoctorSlotBooked({
+      doctorId,
+      patientId,
+      patientName: req.client?.name,
+      slotRequest: newRequest
+    });
 
     console.log('Slot requested successfully:', newRequest._id);
     res.status(201).json({ success: true, request: newRequest });
   } catch (err) {
     console.error('Error in requestSlot:', err);
-    res.status(500).json({ message: 'Failed to request slot', error: err.message });
+    res.status(err.statusCode || 500).json({ message: err.message || 'Failed to request slot', error: err.message });
   }
 };
 
@@ -79,8 +66,11 @@ export const updateSlotRequestStatus = async (req, res) => {
       request.paymentStatus = 'unpaid';
       slot.isBooked = true;
       slot.bookedBy = request.patientId;
+      slot.requestId = request._id;
     } else {
       slot.requestId = null;
+      slot.isBooked = false;
+      slot.bookedBy = null;
     }
 
     await request.save();

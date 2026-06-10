@@ -2,6 +2,7 @@
 import { Router } from 'express';
 import {
   createOrGetChat,
+  getBookedChatContacts,
   getUserChats,
   sendMessage,
   getChatMessages,
@@ -19,6 +20,7 @@ router.use(isAuthenticated);
 
 // Chat routes
 router.post('/create-or-get',isAuthenticated,createOrGetChat);
+router.get('/booked-contacts',isAuthenticated,getBookedChatContacts);
 router.get('/user-chats',isAuthenticated,getUserChats);
 router.post('/send-message',isAuthenticated,chatUpload.single('file'), sendMessage);
 router.post('/:chatId/query',isAuthenticated,askDocumentQuestion);

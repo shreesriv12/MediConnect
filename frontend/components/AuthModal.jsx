@@ -30,7 +30,7 @@ const AuthModal = ({ isOpen, onClose }) => {
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
+        <div className="fixed inset-0 z-50 overflow-y-auto pt-4">
           {/* Backdrop */}
           <motion.div 
             className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
@@ -40,11 +40,15 @@ const AuthModal = ({ isOpen, onClose }) => {
             onClick={onClose}
           />
           
-          {/* Modal */}
-          <div className="flex min-h-screen items-center justify-center p-4">
+          {/* Modal Container */}
+          <div className="flex min-h-screen sm:min-h-auto sm:items-center sm:justify-center p-3 sm:p-4">
             <motion.div 
-              className={`relative mx-auto max-w-lg rounded-lg ${theme === 'dark' ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'} shadow-xl`}
-              variants={modalVariants}
+              className={`relative w-full sm:max-w-xl max-h-[90vh] sm:max-h-none rounded-lg overflow-y-auto ${theme === 'dark' ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'} shadow-xl`}
+              variants={{
+                hidden: { opacity: 0, y: 20, scale: 0.95 },
+                visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.3 } },
+                exit: { opacity: 0, y: 20, scale: 0.95, transition: { duration: 0.2 } }
+              }}
               initial="hidden"
               animate="visible"
               exit="exit"
@@ -52,7 +56,7 @@ const AuthModal = ({ isOpen, onClose }) => {
             >
               {/* Close button */}
               <button
-                className={`absolute right-3 top-3 rounded-full p-1 ${theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-400 hover:text-gray-500'}`}
+                className={`sticky top-3 right-3 z-10 rounded-full p-1 ml-auto block ${theme === 'dark' ? 'text-gray-400 hover:text-white hover:bg-gray-700' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'} transition-colors`}
                 onClick={onClose}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -61,66 +65,66 @@ const AuthModal = ({ isOpen, onClose }) => {
               </button>
               
               {/* Modal Header */}
-              <div className="px-6 py-4">
-                <h3 className={`text-2xl font-bold ${theme === 'dark' ? 'text-blue-400' : 'text-primary'}`}>
+              <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700">
+                <h3 className={`text-xl sm:text-2xl font-bold ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`}>
                   {authMode === 'login' ? 'Welcome Back' : 'Join MediConnect'}
                 </h3>
               </div>
               
               {/* User Type Tabs */}
-              <div className="flex border-b border-gray-200 px-6">
+              <div className={`flex border-b ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} px-4 sm:px-6`}>
                 <button 
-                  className={`py-2 px-4 font-medium transition-colors ${
+                  className={`py-3 px-3 sm:px-4 text-sm sm:text-base font-medium transition-colors flex-1 text-center ${
                     activeTab === 'client' 
                       ? theme === 'dark' 
                         ? 'border-b-2 border-blue-400 text-blue-400' 
-                        : 'border-b-2 border-primary text-primary' 
+                        : 'border-b-2 border-blue-600 text-blue-600' 
                       : theme === 'dark'
                         ? 'text-gray-400 hover:text-white'
-                        : 'text-gray-500 hover:text-gray-700'
+                        : 'text-gray-600 hover:text-gray-900'
                   }`}
                   onClick={() => setActiveTab('client')}
                 >
-                  I'm a Patient
+                  Patient
                 </button>
                 <button 
-                  className={`py-2 px-4 font-medium transition-colors ${
+                  className={`py-3 px-3 sm:px-4 text-sm sm:text-base font-medium transition-colors flex-1 text-center ${
                     activeTab === 'doctor' 
                       ? theme === 'dark' 
                         ? 'border-b-2 border-blue-400 text-blue-400' 
-                        : 'border-b-2 border-primary text-primary' 
+                        : 'border-b-2 border-blue-600 text-blue-600' 
                       : theme === 'dark'
                         ? 'text-gray-400 hover:text-white'
-                        : 'text-gray-500 hover:text-gray-700'
+                        : 'text-gray-600 hover:text-gray-900'
                   }`}
                   onClick={() => setActiveTab('doctor')}
                 >
-                  I'm a Doctor
+                  Doctor
                 </button>
               </div>
               
-              {/* Dynamic Content */}
-              <div className="p-6">
+              {/* Dynamic Content - Scrollable */}
+              <div className="px-4 sm:px-6 py-4 sm:py-6 overflow-y-auto max-h-[calc(90vh-200px)] sm:max-h-none">
                 {getActiveComponent()}
               </div>
               
               {/* Footer - Switch between login and signup */}
-              <div className={`border-t ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} p-4 text-center`}>
+              <div className={`border-t ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} p-3 sm:p-4 text-center sticky bottom-0 ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'}`}>
                 {authMode === 'login' ? (
-                  <p>
+                  <p className="text-sm sm:text-base">
                     Don't have an account?{' '}
                     <button 
-                      className={`font-medium ${theme === 'dark' ? 'text-blue-400 hover:text-blue-300' : 'text-primary hover:text-primary-dark'}`} 
+                      className={`font-medium ${theme === 'dark' ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'}`} 
                       onClick={() => setAuthMode('signup')}
                     >
                       Sign up
                     </button>
                   </p>
                 ) : (
-                  <p>
+                  <p className="text-sm sm:text-base">
                     Already have an account?{' '}
                     <button 
-                      className={`font-medium ${theme === 'dark' ? 'text-blue-400 hover:text-blue-300' : 'text-primary hover:text-primary-dark'}`} 
+                      className={`font-medium ${theme === 'dark' ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'}`} 
                       onClick={() => setAuthMode('login')}
                     >
                       Log in

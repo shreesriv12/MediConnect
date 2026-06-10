@@ -387,6 +387,30 @@ const retrieveLocalDocuments = async ({ sessionId, question, fileId = null, k = 
     );
 };
 
+const maskPHI = (text) => {
+  let masked = String(text || "");
+
+  const maskPatterns = [
+    { regex: /(Patient\s*Name|Name):\s*[^\r\n]+/gi, replacement: (match) => match.split(":")[0] + ": [MASKED]" },
+    { regex: /(Address|Residential Address|Permanent Address):\s*[^\r\n]+/gi, replacement: (match) => match.split(":")[0] + ": [MASKED]" },
+    { regex: /(City|State|District|Taluka|Village):\s*[^\r\n]+/gi, replacement: (match) => match.split(":")[0] + ": [MASKED]" },
+    { regex: /(PIN|Postal Code|Zip Code):\s*[^\r\n]+/gi, replacement: (match) => match.split(":")[0] + ": [MASKED]" },
+    { regex: /(Aadhaar|Aadhar|UID|PAN|MRN|UHID|Patient ID|Hospital ID):\s*[^\r\n]+/gi, replacement: (match) => match.split(":")[0] + ": [MASKED]" },
+    { regex: /\d{12}/g, replacement: "[MASKED]" },
+    { regex: /[A-Z]{5}\d{4}[A-Z]/g, replacement: "[MASKED]" },
+    { regex: /\d{3}[-.]?\d{3}[-.]?\d{4}/g, replacement: "[MASKED]" },
+    { regex: /[\w.-]+@[\w.-]+\.\w+/g, replacement: "[MASKED]" },
+    { regex: /(Phone|Mobile|Contact No|Contact Number):\s*[^\r\n]+/gi, replacement: (match) => match.split(":")[0] + ": [MASKED]" },
+    { regex: /(Doctor|Consultant)\s*Name:\s*[^\r\n]+/gi, replacement: (match) => match.split(":")[0] + ": [MASKED]" }
+  ];
+
+  for (const { regex, replacement } of maskPatterns) {
+    masked = masked.replace(regex, replacement);
+  }
+
+  return masked;
+};
+
 const cleanText = (text) =>
   String(text || "")
     .replace(/\u0000/g, " ")
@@ -531,7 +555,8 @@ export const loadDocument = async ({ uploadedFile, sourcePath }) => {
     throw new Error(`Unsupported document extension: ${extension}`);
   }
 
-  const cleanedText = cleanText(text);
+  const deidentifiedText = maskPHI(text);
+  const cleanedText = cleanText(deidentifiedText);
   if (!cleanedText) {
     throw new Error("No readable text was extracted from the uploaded file");
   }

@@ -6,6 +6,8 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { v4 as uuidv4 } from 'uuid';
+import { hasBookedAppointmentBetween } from "../services/appointmentAccess.service.js";
+import { notifyVideoCallInvite } from "../services/notification.service.js";
 
 // Generate unique room ID
 const generateRoomId = () => {
@@ -55,6 +57,17 @@ const initiateCall = asyncHandler(async (req, res) => {
   }
 
   const { currentUser, currentUserType, currentUserName, currentUserAvatar } = getCurrentUserInfo(req);
+
+  const hasBooking = await hasBookedAppointmentBetween({
+    userAId: currentUser,
+    userAType: currentUserType,
+    userBId: participantId,
+    userBType: participantType
+  });
+
+  if (!hasBooking) {
+    throw new ApiError(403, "Video calls are available only after a slot is booked between this doctor and patient");
+  }
 
   // Check if there's already an ongoing call between these participants
   const existingCall = await VideoCall.findOne({
@@ -109,6 +122,16 @@ const initiateCall = asyncHandler(async (req, res) => {
 
   // Emit socket event to notify the other participant
   if (req.io) {
+    const notification = await notifyVideoCallInvite({
+      recipientId: participantId,
+      recipientModel: participantType,
+      senderId: currentUser,
+      senderModel: currentUserType,
+      senderName: currentUserName,
+      callId: videoCall._id,
+      roomId
+    });
+    req.io.to(`user_${participantId}`).emit('notification:new', notification);
     req.io.to(`user_${participantId}`).emit('incomingCall', {
       callId: videoCall._id,
       caller: {

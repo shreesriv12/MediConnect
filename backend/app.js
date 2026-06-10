@@ -10,21 +10,13 @@ import { Server } from "socket.io";
 import { initializeSocket } from "./src/utils/socketHandlers.js";
 import { initiateCall } from "./src/controllers/video.controller.js";
 import  clinicRoutes from './src/routes/clinic.routes.js';
+import { startAppointmentReminderCron } from "./src/jobs/appointmentReminder.cron.js";
 // Express and HTTP server setup
 const app = express();
 const server = http.createServer(app);
 const PORT = process.env.PORT || 5000;
 
 const normalizeOrigin = (origin) => origin?.trim().replace(/\/+$/, "");
-const allowedOrigins = [
-  process.env.CORS_ORIGIN,
-  process.env.FRONTEND_URL,
-  process.env.CLIENT_URL,
-  "http://localhost:5173",
-  "http://localhost:3000",
-]
-  .map(normalizeOrigin)
-  .filter(Boolean);
 
 const corsOptions = {
   origin(origin, callback) {
@@ -179,6 +171,8 @@ import scheduleRoutes from './src/routes/schedule.routes.js';
 import slotRequestRoutes from './src/routes/slotRequest.routes.js'
 import paymentRoutes from './src/routes/payment.routes.js'
 import uploadRouter from './src/routes/upload.routes.js';
+import agentRouter from './src/routes/agent.routes.js';
+import notificationRouter from './src/routes/notification.routes.js';
 
 // === Route Usage ===
 app.use("/doctor", doctorRouter);
@@ -191,6 +185,8 @@ app.use("/clinics", clinicRoutes);
 app.use("/medicines", medicineRoutes);
 app.use('/slots', slotRequestRoutes);
 app.use('/payments', paymentRoutes);
+app.use('/agent', agentRouter);
+app.use('/notifications', notificationRouter);
 app.use('/api', uploadRouter);
 
 // Health check endpoint
@@ -224,6 +220,7 @@ app.use((err, req, res, next) => {
 // === Start Server ===
 connectDB()
   .then(() => {
+    startAppointmentReminderCron();
     server.listen(PORT, () => {
       console.log(`🚀 Server running on http://localhost:${PORT}`);
     });

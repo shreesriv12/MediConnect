@@ -2,6 +2,8 @@ import razorpay from '../utils/razorpay.js';
 import Payment from '../models/payment.model.js';
 import SlotRequest from '../models/slotRequest.model.js';
 import crypto from 'crypto';
+import { confirmSlotRequestBooking } from '../services/slotBooking.service.js';
+import { notifyAppointmentPaid } from '../services/notification.service.js';
 
 export const createOrder = async (req, res) => {
   const { slotRequestId, amount } = req.body;
@@ -42,7 +44,9 @@ export const verifyPayment = async (req, res) => {
   }
 
   try {
-    const slotRequest = await SlotRequest.findById(slotRequestId);
+    const slotRequest = await SlotRequest.findById(slotRequestId)
+      .populate('doctorId', 'name')
+      .populate('patientId', 'name');
     if (!slotRequest) {
       return res.status(404).json({ success: false, message: "Slot request not found" });
     }
@@ -51,12 +55,20 @@ export const verifyPayment = async (req, res) => {
     slotRequest.paymentStatus = "paid";
     slotRequest.status = "accepted";
     await slotRequest.save();
+    await confirmSlotRequestBooking(slotRequest._id);
+    await notifyAppointmentPaid({
+      doctorId: slotRequest.doctorId._id || slotRequest.doctorId,
+      patientId: slotRequest.patientId._id || slotRequest.patientId,
+      patientName: slotRequest.patientId?.name,
+      doctorName: slotRequest.doctorId?.name,
+      slotRequest
+    });
 
     // Create payment record
     const payment = new Payment({
       slotRequestId,
-      doctorId: slotRequest.doctorId,
-      patientId: slotRequest.patientId,
+      doctorId: slotRequest.doctorId._id || slotRequest.doctorId,
+      patientId: slotRequest.patientId._id || slotRequest.patientId,
       amount: slotRequest.fee,
       status: "success",
       transactionId: razorpay_payment_id,

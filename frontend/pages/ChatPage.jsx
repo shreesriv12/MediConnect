@@ -5,6 +5,8 @@ import useDoctorAuthStore from '../store/doctorAuthStore';
 import useClientAuthStore from '../store/clientAuthStore';
 import { Link } from 'react-router-dom';
 
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
 // Helper function to safely format dates
 const formatMessageTime = (dateString) => {
   try {
@@ -271,20 +273,23 @@ const ChatPage = () => {
   const fetchContacts = async () => {
     try {
       setLoading(true);
-      if (userType === 'Client') {
-        const result = await getAllDoctors({ verified: 'true' });
-        if (result.success) {
-          setContacts(result.data);
+      const token = localStorage.getItem('doctorAccessToken') || localStorage.getItem('clientAccessToken');
+      const response = await fetch(`${API_URL}/chats/booked-contacts`, {
+        credentials: 'include',
+        headers: {
+          Authorization: token ? `Bearer ${token}` : undefined
         }
-      } else if (userType === 'Doctor') {
-        const result = await getAllClients();
-        if (result.success) {
-          setContacts(result.data);
-        }
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to fetch booked contacts');
       }
+
+      setContacts(data.data || []);
     } catch (error) {
       console.error('Failed to fetch contacts:', error);
-      setError('Failed to fetch contacts');
+      setError(error.message || 'Failed to fetch contacts');
     } finally {
       setLoading(false);
     }
@@ -311,7 +316,7 @@ const ChatPage = () => {
       setShowContactList(false);
     } catch (error) {
       console.error('Failed to create/get chat:', error);
-      setError('Failed to create chat');
+      setError(error.response?.data?.message || error.message || 'Failed to create chat');
     }
   };
 

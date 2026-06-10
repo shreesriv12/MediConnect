@@ -18,6 +18,7 @@ import AllDoctorsPage from '../components/GetDoctor';
 import ScheduleManagement from '../components/DoctorSchedue';
 import PatientBookingPortal from '../components/PatientBookingPortal';
 import DoctorPaymentPortal from '../components/DoctorPayementPortal';
+import DoctorPublicProfile from '../components/DoctorPublicProfile';
 function App() {
   
   return (
@@ -39,6 +40,7 @@ function App() {
             <Route path="/nearby-clinics" element={<NearbyClinicsMap />} />
             <Route path="/medicines-search" element={<MedicineSearch />} />
             <Route path="/finddoctors" element={<AllDoctorsPage />} />
+            <Route path="/doctor/:id" element={<DoctorPublicProfile />} />
             <Route path="/doctorschedule" element={<ScheduleManagement />} />
             <Route path="/bookappointment" element={<PatientBookingPortal />} />
             {/* Redirect to home if no route matches */}

@@ -9,20 +9,32 @@ const DoctorPaymentPortal = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
-  const { isAuthenticated, currentDoctor, getCurrentDoctor } = useDoctorAuthStore();
+  const { isAuthenticated, currentDoctor, doctor, getCurrentDoctor } = useDoctorAuthStore();
 
   useEffect(() => {
     // Ensure we have current doctor data before fetching payments
     const initializeAndFetchPayments = async () => {
       try {
-        // Get current doctor if not already available
-        if (!currentDoctor) {
-          await getCurrentDoctor();
+        let activeDoctor = currentDoctor;
+
+        if (!activeDoctor) {
+          const result = await getCurrentDoctor();
+          if (result.success) {
+            activeDoctor = result.data;
+          }
         }
-        // Fetch payment history after ensuring doctor data is available
-        await fetchPaymentHistory();
+
+        if (!activeDoctor && doctor) {
+          activeDoctor = doctor;
+        }
+
+        if (!activeDoctor?._id) {
+          throw new Error('Doctor information not available');
+        }
+
+        await fetchPaymentHistory(activeDoctor);
       } catch (err) {
-        setError('Failed to initialize data');
+        setError(err.message || 'Failed to initialize data');
         setLoading(false);
       }
     };
@@ -30,18 +42,18 @@ const DoctorPaymentPortal = () => {
     if (isAuthenticated) {
       initializeAndFetchPayments();
     }
-  }, [isAuthenticated, currentDoctor, getCurrentDoctor]);
+  }, [isAuthenticated, currentDoctor, doctor, getCurrentDoctor]);
 
-  const fetchPaymentHistory = async () => {
+  const fetchPaymentHistory = async (activeDoctor) => {
     try {
       setLoading(true);
       
-      // Ensure we have currentDoctor before proceeding
-      if (!currentDoctor?._id) {
+      const doctorToUse = activeDoctor || currentDoctor || doctor;
+      if (!doctorToUse?._id) {
         throw new Error('Doctor information not available');
       }
       
-      const doctorId = currentDoctor._id; 
+      const doctorId = doctorToUse._id;
       const response = await fetch(`${API_URL}/payments/history?doctorId=${doctorId}`);
       
       if (!response.ok) {
@@ -79,8 +91,10 @@ const DoctorPaymentPortal = () => {
     return payment.status === filterStatus;
   }) || [];
 
+  const activeDoctor = currentDoctor || doctor;
+
   // Show loading if not authenticated or if doctor data is not available
-  if (!isAuthenticated || !currentDoctor) {
+  if (!isAuthenticated || !activeDoctor) {
     return (
       <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
         <div className="text-center">
@@ -142,7 +156,7 @@ const DoctorPaymentPortal = () => {
           <p className="text-gray-600">Track your earnings and patient payment details</p>
           {/* Display current doctor info */}
           <div className="mt-2 text-sm text-gray-500">
-            Dr. {currentDoctor.name} - ID: {currentDoctor._id}
+            Dr. {(currentDoctor || doctor)?.name} - ID: {(currentDoctor || doctor)?._id}
           </div>
         </div>
 
