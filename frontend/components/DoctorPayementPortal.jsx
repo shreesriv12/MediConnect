@@ -96,7 +96,7 @@ const DoctorPaymentPortal = () => {
   // Show loading if not authenticated or if doctor data is not available
   if (!isAuthenticated || !activeDoctor) {
     return (
-      <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 p-3 sm:p-6 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading doctor information...</p>
@@ -107,7 +107,7 @@ const DoctorPaymentPortal = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 p-6">
+      <div className="min-h-screen bg-gray-50 p-3 sm:p-6">
         <div className="max-w-6xl mx-auto">
           <div className="animate-pulse">
             <div className="h-8 bg-gray-300 rounded w-1/3 mb-6"></div>
@@ -132,7 +132,7 @@ const DoctorPaymentPortal = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 p-3 sm:p-6 flex items-center justify-center">
         <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md">
           <h2 className="text-red-800 font-semibold mb-2">Error Loading Data</h2>
           <p className="text-red-600">{error}</p>
@@ -148,11 +148,11 @@ const DoctorPaymentPortal = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gray-50 p-3 sm:p-6">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Payment History</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Payment History</h1>
           <p className="text-gray-600">Track your earnings and patient payment details</p>
           {/* Display current doctor info */}
           <div className="mt-2 text-sm text-gray-500">
@@ -161,8 +161,8 @@ const DoctorPaymentPortal = () => {
         </div>
 
         {/* Statistics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6 mb-8">
+          <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Total Earnings</p>
@@ -176,7 +176,7 @@ const DoctorPaymentPortal = () => {
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Total Payments</p>
@@ -188,7 +188,7 @@ const DoctorPaymentPortal = () => {
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Successful Payments</p>
@@ -203,7 +203,7 @@ const DoctorPaymentPortal = () => {
 
         {/* Filter */}
         <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6">
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
             <Filter className="h-5 w-5 text-gray-500" />
             <span className="text-sm font-medium text-gray-700">Filter by status:</span>
             <select
@@ -230,7 +230,7 @@ const DoctorPaymentPortal = () => {
                 <p className="text-gray-500">No payment records found</p>
               </div>
             ) : (
-              <table className="w-full">
+              <table className="w-full min-w-[52rem]">
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">

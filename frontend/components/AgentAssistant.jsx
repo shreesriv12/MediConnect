@@ -168,8 +168,8 @@ const AgentAssistant = () => {
   };
 
   return (
-    <section className="agent-assistant card shadow-sm p-4 mb-6">
-      <h2 className="text-xl font-semibold mb-3">Smart Booking Assistant</h2>
+    <section className="agent-assistant card shadow-sm p-3 sm:p-4 mb-6 overflow-hidden">
+      <h2 className="text-lg sm:text-xl font-semibold mb-3">Smart Booking Assistant</h2>
       <p className="mb-4 text-sm text-slate-500">
         Ask something like "I have diarrhea, show me doctors", "find doctors available on June12", or "book my schedule with this doctor Moksh Jain".
       </p>
@@ -184,7 +184,7 @@ const AgentAssistant = () => {
         />
         <button
           type="submit"
-          className="inline-flex items-center justify-center rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-60"
+          className="inline-flex w-full sm:w-auto items-center justify-center rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-60"
           disabled={loading}
         >
           {loading ? "Thinking..." : "Ask the assistant"}
@@ -205,7 +205,7 @@ const AgentAssistant = () => {
                 <p className="text-sm text-slate-500">{doctor.bio || doctor.description || "No description available."}</p>
                 <Link
                   to={`/doctor/${doctor._id}`}
-                  className="mt-3 inline-flex rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                  className="mt-3 inline-flex w-full sm:w-auto justify-center rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
                 >
                   View profile
                 </Link>
@@ -227,7 +227,7 @@ const AgentAssistant = () => {
                 <p className="text-sm text-slate-500">Slots: {item.availableSlots.map((slot) => slot.time).join(", ")}</p>
                 <Link
                   to={`/doctor/${item.doctor._id}`}
-                  className="mt-3 inline-flex rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                  className="mt-3 inline-flex w-full sm:w-auto justify-center rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
                 >
                   View profile
                 </Link>
@@ -248,10 +248,10 @@ const AgentAssistant = () => {
           <p className="text-sm text-slate-700">Fee: Rs {booking.fee}</p>
           <p className="mt-2 text-sm text-slate-600">Your booking is reserved. Complete payment to confirm the appointment.</p>
 
-          <div className="mt-3 flex flex-wrap gap-2">
+          <div className="mt-3 flex flex-col sm:flex-row sm:flex-wrap gap-2">
             <Link
               to={`/doctor/${booking.doctor._id}`}
-              className="inline-flex rounded-md border border-blue-600 px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50"
+              className="inline-flex justify-center rounded-md border border-blue-600 px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50"
             >
               View doctor profile
             </Link>
@@ -259,7 +259,7 @@ const AgentAssistant = () => {
               type="button"
               onClick={handlePayment}
               disabled={paymentLoading}
-              className="inline-flex rounded-md bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-60"
+              className="inline-flex justify-center rounded-md bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-60"
             >
               {paymentLoading ? "Opening payment..." : "Click here to pay"}
             </button>

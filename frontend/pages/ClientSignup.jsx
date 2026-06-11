@@ -189,10 +189,10 @@ const ClientSignup = () => {
   const displayError = storeError || error;
 
   return (
-    <div className={`max-w-4xl mx-auto p-6 rounded-lg shadow-md ${
+    <div className={`max-w-4xl mx-3 sm:mx-auto p-4 sm:p-6 rounded-lg shadow-md ${
       theme === 'dark' ? 'bg-gray-800 text-white' : 'bg-white text-gray-800'
     }`}>
-      <h2 className={`text-2xl font-bold text-center mb-6 ${
+      <h2 className={`text-xl sm:text-2xl font-bold text-center mb-6 ${
         theme === 'dark' ? 'text-white' : 'text-gray-800'
       }`}>Client Registration</h2>
       
@@ -370,9 +370,9 @@ const ClientSignup = () => {
               <label className={`block mb-2 ${
                 theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
               }`}>Profile Picture (Optional)</label>
-              <div className="flex items-center">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4">
                 {avatarPreview && (
-                  <div className={`w-24 h-24 rounded-full overflow-hidden mr-4 ${
+                  <div className={`w-24 h-24 rounded-full overflow-hidden ${
                     theme === 'dark' ? 'border border-gray-600' : 'border border-gray-300'
                   }`}>
                     <img 
@@ -426,8 +426,8 @@ const ClientSignup = () => {
       
       {/* Verification Modal */}
       {showVerificationModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className={`p-6 rounded-lg max-w-md w-full ${
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-3">
+          <div className={`p-4 sm:p-6 rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto ${
             theme === 'dark' ? 'bg-gray-800 text-white' : 'bg-white text-gray-800'
           }`}>
             <h3 className={`text-xl font-bold mb-4 ${
@@ -435,10 +435,10 @@ const ClientSignup = () => {
             }`}>Verify Your Account</h3>
             
             {/* Verification method tabs */}
-            <div className="flex mb-6 border-b border-gray-600">
+            <div className="flex mb-6 border-b border-gray-600 overflow-x-auto">
               <button
                 onClick={() => setVerificationMethod('email')}
-                className={`flex-1 py-2 px-4 text-center ${
+                className={`flex-1 min-w-0 py-2 px-3 sm:px-4 text-center text-sm sm:text-base ${
                   verificationMethod === 'email' 
                     ? theme === 'dark' 
                       ? 'bg-gray-700 border-b-2 border-blue-500' 
@@ -450,7 +450,7 @@ const ClientSignup = () => {
               </button>
               <button
                 onClick={() => setVerificationMethod('phone')}
-                className={`flex-1 py-2 px-4 text-center ${
+                className={`flex-1 min-w-0 py-2 px-3 sm:px-4 text-center text-sm sm:text-base ${
                   verificationMethod === 'phone' 
                     ? theme === 'dark' 
                       ? 'bg-gray-700 border-b-2 border-blue-500' 
@@ -522,7 +522,7 @@ const ClientSignup = () => {
               </div>
             )}
             
-            <div className="flex justify-between">
+            <div className="flex flex-col sm:flex-row gap-3 sm:justify-between">
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}

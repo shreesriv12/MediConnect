@@ -103,9 +103,9 @@ const DoctorDirectory = () => {
   return (
     <section>
         <DoctorDashboardNavbar/>
-    <div className={`p-25 max-w-6xl mx-auto transition-colors duration-200 ${containerClass}`}>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className={`text-2xl font-bold ${headingClass}`}>Patient Directory</h1>
+    <div className={`pt-20 px-3 sm:px-6 lg:px-8 pb-8 max-w-6xl mx-auto transition-colors duration-200 ${containerClass}`}>
+      <div className="flex justify-between items-center gap-4 mb-6">
+        <h1 className={`text-xl sm:text-2xl font-bold ${headingClass}`}>Patient Directory</h1>
         
         {/* Theme Toggle Button */}
         <button 
@@ -190,8 +190,8 @@ const DoctorDirectory = () => {
           
           {/* Appointments table */}
           {appointments.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className={`min-w-full ${cardClass} rounded-lg transition-colors duration-200`}>
+            <div className="overflow-x-auto rounded-lg">
+              <table className={`min-w-[56rem] ${cardClass} rounded-lg transition-colors duration-200`}>
                 <thead className={tableHeaderClass}>
                   <tr>
                     <th className="py-3 px-4 text-left text-xs font-medium uppercase tracking-wider">Patient</th>

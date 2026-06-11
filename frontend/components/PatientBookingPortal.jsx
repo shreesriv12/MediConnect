@@ -350,13 +350,13 @@ const PatientBookingPortal = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      <div className="max-w-7xl mx-auto p-6">
+      <div className="max-w-7xl mx-auto p-3 sm:p-6">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-blue-800 bg-clip-text text-transparent mb-4">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-blue-800 bg-clip-text text-transparent mb-4">
             {currentView === 'doctors' ? 'Book Your Appointment' : `Book with Dr. ${selectedDoctor?.name}`}
           </h1>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+          <p className="text-sm sm:text-lg lg:text-xl text-gray-600 max-w-2xl mx-auto">
             {currentView === 'doctors' 
               ? 'Choose from our verified doctors and book your appointment'
               : 'Select a date and time slot for your appointment'
@@ -391,7 +391,7 @@ const PatientBookingPortal = () => {
               </div>
               
               <div className="bg-white rounded-xl p-4 mb-4">
-                <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                   <div>
                     <span className="text-gray-500">Doctor:</span>
                     <p className="font-semibold">Dr. {pendingSlotRequest.doctorName}</p>
@@ -459,11 +459,11 @@ const PatientBookingPortal = () => {
 
             {/* Doctors Grid */}
             {!loading && (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
                 {filteredDoctors.map((doctor) => (
                   <div
                     key={doctor._id}
-                    className="group bg-white/80 backdrop-blur-sm rounded-3xl shadow-lg hover:shadow-2xl p-6 border border-gray-200 transition-all duration-300 hover:-translate-y-2 hover:scale-[1.02] cursor-pointer"
+                    className="group bg-white/80 backdrop-blur-sm rounded-3xl shadow-lg hover:shadow-2xl p-4 sm:p-6 border border-gray-200 transition-all duration-300 hover:-translate-y-2 hover:scale-[1.02] cursor-pointer"
                     onClick={() => handleDoctorSelect(doctor)}
                   >
                     {/* Doctor Image */}
@@ -485,7 +485,7 @@ const PatientBookingPortal = () => {
 
                     {/* Doctor Info */}
                     <div className="text-center mb-6">
-                      <h2 className="text-2xl font-bold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors">
+                      <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors">
                         Dr. {doctor.name}
                       </h2>
                       <div className="inline-flex items-center px-3 py-1 rounded-full bg-blue-100 text-blue-800 text-sm font-medium mb-3">
@@ -580,16 +580,16 @@ const PatientBookingPortal = () => {
 
             {/* Doctor Summary Card */}
             <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
-              <div className="flex items-center gap-6">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6 text-center sm:text-left">
                 <img
                   src={selectedDoctor.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedDoctor.name)}&background=4f46e5&color=fff&size=80`}
                   alt={selectedDoctor.name}
-                  className="w-20 h-20 rounded-full object-cover border-4 border-gray-200"
+                  className="w-20 h-20 rounded-full object-cover border-4 border-gray-200 mx-auto sm:mx-0"
                 />
                 <div className="flex-1">
                   <h2 className="text-2xl font-bold text-gray-900 mb-1">Dr. {selectedDoctor.name}</h2>
                   <p className="text-blue-600 font-medium mb-2">{selectedDoctor.specialization}</p>
-                  <div className="flex items-center gap-4 text-sm text-gray-600">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-sm text-gray-600">
                     <span className="flex items-center gap-1">
                       <Award size={16} />
                       {selectedDoctor.experience} years exp.
@@ -648,8 +648,8 @@ const PatientBookingPortal = () => {
                               : 'border-yellow-200 bg-yellow-50'
                           }`}
                         >
-                          <div className="flex justify-between items-center">
-                            <div className="flex items-center gap-6">
+                          <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center">
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6">
                               <div className="flex items-center gap-2">
                                 <Clock size={18} className="text-gray-600" />
                                 <span className="font-semibold text-gray-900 text-lg">{slot.time}</span>
@@ -660,7 +660,7 @@ const PatientBookingPortal = () => {
                               </div>
                             </div>
                             
-                            <div className="flex items-center gap-4">
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
                               <div className={`px-4 py-2 rounded-full text-sm font-medium ${
                                 isAvailable 
                                   ? 'bg-green-100 text-green-800' 
@@ -675,7 +675,7 @@ const PatientBookingPortal = () => {
                                 <button
                                   onClick={() => requestSlot(doctorSchedules[0]._id, index, slot.fee)}
                                   disabled={bookingLoading}
-                                  className="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 disabled:bg-blue-300 transition-colors font-medium"
+                                  className="w-full sm:w-auto bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 disabled:bg-blue-300 transition-colors font-medium"
                                 >
                                   {bookingLoading ? 'Requesting...' : 'Request Slot'}
                                 </button>

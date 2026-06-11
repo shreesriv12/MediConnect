@@ -1,2 +1,51 @@
 @import "tailwindcss";
 @import "leaflet/dist/leaflet.css";
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  width: 100%;
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+}
+
+body,
+#root {
+  min-width: 0;
+  width: 100%;
+  min-height: 100vh;
+  margin: 0;
+  overflow-x: hidden;
+}
+
+img,
+video,
+canvas,
+svg {
+  max-width: 100%;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+.app {
+  min-width: 0;
+  width: 100%;
+}
+
+.leaflet-container {
+  min-height: 18rem;
+  width: 100%;
+}
+
+@media (max-width: 640px) {
+  .leaflet-control-container {
+    font-size: 0.75rem;
+  }
+}

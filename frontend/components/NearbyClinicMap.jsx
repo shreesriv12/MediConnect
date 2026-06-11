@@ -341,32 +341,32 @@ const MedicalFacilitiesFinder = () => {
   ];
 
   return (
-    <div className="h-screen flex flex-col bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen lg:h-screen flex flex-col bg-gradient-to-br from-blue-50 to-indigo-100">
       {/* Enhanced Header */}
       <div className="bg-white shadow-xl border-b border-gray-200">
-        <div className="p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-3">
-              <div className="p-2 bg-red-100 rounded-lg">
-                <Hospital className="w-8 h-8 text-red-600" />
+        <div className="p-3 sm:p-4 lg:p-6">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-6">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 flex items-center gap-3">
+              <div className="p-2 bg-red-100 rounded-lg flex-shrink-0">
+                <Hospital className="w-6 h-6 sm:w-8 sm:h-8 text-red-600" />
               </div>
               Medical Facilities Finder
             </h1>
-            <div className="flex items-center gap-6">
+            <div className="flex flex-col sm:flex-row sm:items-end gap-3 sm:gap-6">
               {/* Enhanced Radius Selector */}
               <div className="relative">
                 <label className="text-sm font-semibold text-gray-700 block mb-2">Search Radius:</label>
                 <div className="relative">
                   <button
                     onClick={() => setIsRadiusOpen(!isRadiusOpen)}
-                    className="w-32 px-4 py-2 bg-white border-2 border-gray-300 rounded-lg flex items-center justify-between hover:border-blue-400 focus:border-blue-500 focus:outline-none transition-colors"
+                    className="w-full sm:w-32 px-4 py-2 bg-white border-2 border-gray-300 rounded-lg flex items-center justify-between hover:border-blue-400 focus:border-blue-500 focus:outline-none transition-colors"
                   >
                     <span className="font-medium">{radius} km</span>
                     <ChevronDown className={`w-4 h-4 transition-transform ${isRadiusOpen ? 'rotate-180' : ''}`} />
                   </button>
                   
                   {isRadiusOpen && (
-                    <div className="absolute top-full left-0 mt-1 w-32 bg-white border-2 border-gray-300 rounded-lg shadow-lg z-50 max-h-48 overflow-y-auto">
+                    <div className="absolute top-full left-0 mt-1 w-full sm:w-32 bg-white border-2 border-gray-300 rounded-lg shadow-lg z-50 max-h-48 overflow-y-auto">
                       {radiusOptions.map((option) => (
                         <button
                           key={option.value}
@@ -389,7 +389,7 @@ const MedicalFacilitiesFinder = () => {
                 <button
                   onClick={getCurrentLocation}
                   disabled={loading}
-                  className="bg-gradient-to-r from-red-600 to-red-700 text-white px-6 py-2 rounded-lg flex items-center gap-3 hover:from-red-700 hover:to-red-800 disabled:opacity-50 shadow-lg transform hover:scale-105 transition-all duration-200"
+                  className="w-full sm:w-auto bg-gradient-to-r from-red-600 to-red-700 text-white px-5 sm:px-6 py-2 rounded-lg flex items-center justify-center gap-3 hover:from-red-700 hover:to-red-800 disabled:opacity-50 shadow-lg transform hover:scale-105 transition-all duration-200"
                 >
                   {loading ? <Loader className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5" />}
                   <span className="font-medium">Find Facilities</span>
@@ -399,7 +399,7 @@ const MedicalFacilitiesFinder = () => {
           </div>
 
           {/* Enhanced Tabs */}
-          <div className="flex gap-3">
+          <div className="flex gap-2 sm:gap-3 overflow-x-auto pb-1">
             {[
               { key: 'all', label: 'All Facilities', icon: MapPin, count: getTotalCount(), color: 'purple' },
               { key: 'hospitals', label: 'Hospitals', icon: Hospital, count: medicalFacilities.hospitals.length, color: 'red' },
@@ -409,7 +409,7 @@ const MedicalFacilitiesFinder = () => {
               <button
                 key={key}
                 onClick={() => handleTabChange(key)}
-                className={`px-6 py-3 rounded-xl flex items-center gap-3 transition-all duration-200 transform hover:scale-105 ${
+                className={`flex-shrink-0 px-4 sm:px-6 py-3 rounded-xl flex items-center gap-2 sm:gap-3 transition-all duration-200 transform hover:scale-105 ${
                   activeTab === key
                     ? `bg-gradient-to-r ${
                         color === 'purple' ? 'from-purple-600 to-purple-700' :
@@ -436,7 +436,7 @@ const MedicalFacilitiesFinder = () => {
       </div>
 
       {error && (
-        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 px-6 py-4 mx-6 mt-4 rounded-r-lg shadow-md">
+        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 px-4 sm:px-6 py-4 mx-3 sm:mx-6 mt-4 rounded-r-lg shadow-md">
           <div className="flex items-center">
             <div className="flex-shrink-0">
               <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
@@ -451,9 +451,9 @@ const MedicalFacilitiesFinder = () => {
       )}
 
       {/* Main Content */}
-      <div className="flex-1 flex gap-4 p-4">
+      <div className="flex-1 flex flex-col lg:flex-row gap-4 p-3 sm:p-4 min-h-0">
         {/* Enhanced Map Container */}
-        <div className="flex-1 relative bg-white rounded-2xl shadow-xl overflow-hidden">
+        <div className="h-[45vh] min-h-[22rem] lg:h-auto lg:flex-1 relative bg-white rounded-2xl shadow-xl overflow-hidden">
           <div ref={mapRef} className="w-full h-full" />
           
           {/* Map Controls */}
@@ -524,9 +524,9 @@ const MedicalFacilitiesFinder = () => {
         </div>
 
         {/* Enhanced Sidebar */}
-        <div className="w-96 bg-white rounded-2xl shadow-xl overflow-hidden">
-          <div className="p-6">
-            <div className="flex items-center justify-between mb-6">
+        <div className="w-full lg:w-96 bg-white rounded-2xl shadow-xl overflow-hidden">
+          <div className="p-4 sm:p-6">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-6">
               <h2 className="text-xl font-bold text-gray-800">
                 {activeTab === 'all' ? 'All Medical Facilities' : 
                  activeTab === 'hospitals' ? 'Hospitals' :
@@ -539,7 +539,7 @@ const MedicalFacilitiesFinder = () => {
               )}
             </div>
 
-            <div className="h-[calc(100vh-300px)] overflow-y-auto pr-2 -mr-2">
+            <div className="max-h-[32rem] lg:h-[calc(100vh-300px)] overflow-y-auto pr-2 -mr-2">
               {getFilteredFacilities().length === 0 ? (
                 <div className="text-center text-gray-500 py-12">
                   <div className="p-4 bg-gray-100 rounded-full w-20 h-20 mx-auto mb-4 flex items-center justify-center">
@@ -563,7 +563,7 @@ const MedicalFacilitiesFinder = () => {
                         }
                       }}
                     >
-                      <div className="flex items-start gap-4">
+                      <div className="flex items-start gap-3 sm:gap-4">
                         <div className="flex-shrink-0 p-2 bg-white rounded-lg shadow-sm">
                           {getTypeIcon(facility.category)}
                         </div>

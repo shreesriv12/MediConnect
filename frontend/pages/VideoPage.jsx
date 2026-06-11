@@ -925,7 +925,7 @@ const VideoCallPage = () => {
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="flex flex-col sm:flex-row h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+    <div className="flex h-dvh min-h-screen overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
       {incomingOffer && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 px-4">
           <div className="w-full max-w-sm bg-white rounded-2xl shadow-2xl border border-slate-200 p-6 text-center">
@@ -960,8 +960,8 @@ const VideoCallPage = () => {
       {/* Sidebar */}
       <div
         className={`${
-          showContactList ? "w-full sm:w-80" : "hidden sm:block sm:w-80"
-        } bg-white/90 backdrop-blur-xl border-b sm:border-r border-slate-200/60 shadow-2xl overflow-hidden flex flex-col`}
+          showContactList ? "w-full md:w-80 lg:w-96" : "hidden md:flex md:w-80 lg:w-96"
+        } bg-white/90 backdrop-blur-xl border-r border-slate-200/60 shadow-2xl overflow-hidden flex flex-col`}
       >
         {/* Header */}
         <div className="p-4 sm:p-6 border-b border-slate-200/60 bg-gradient-to-r from-white/80 to-blue-50/50">
@@ -993,7 +993,7 @@ const VideoCallPage = () => {
                   }`}
                 ></div>
               </div>
-              <div className="ml-4 flex-1">
+              <div className="ml-3 sm:ml-4 flex-1 min-w-0">
                 <h2 className="text-lg font-bold text-slate-900">{currentUser.name}</h2>
                 <p className="text-sm text-slate-600 mt-1">
                   {currentUser.gender || "Not specified"} • {userType}
@@ -1286,10 +1286,10 @@ const VideoCallPage = () => {
       </div>
 
       {/* ── Main Video Area ──────────────────────────────────────────────────── */}
-      <div className="flex-1 flex flex-col">
+      <div className="min-w-0 flex-1 flex flex-col">
         {!selectedContact && !currentCall ? (
           <div className="flex-1 flex items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50">
-            <div className="text-center max-w-md p-10 bg-white/80 backdrop-blur-lg rounded-3xl shadow-2xl border border-white/20">
+            <div className="text-center max-w-md mx-4 p-6 sm:p-10 bg-white/80 backdrop-blur-lg rounded-3xl shadow-2xl border border-white/20">
               <div className="w-24 h-24 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-xl">
                 <Video className="w-12 h-12 text-white" />
               </div>
@@ -1301,7 +1301,7 @@ const VideoCallPage = () => {
               </p>
               <button
                 onClick={() => setShowContactList(true)}
-                className="md:hidden bg-gradient-to-r from-blue-500 to-indigo-600 text-white px-8 py-4 rounded-2xl font-semibold hover:shadow-lg transition-all hover:scale-105"
+                className="md:hidden bg-gradient-to-r from-blue-500 to-indigo-600 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-2xl font-semibold hover:shadow-lg transition-all hover:scale-105"
               >
                 View Contacts
               </button>
@@ -1323,10 +1323,10 @@ const VideoCallPage = () => {
 
             {/* Placeholder when no remote stream - Only show if not connected */}
             {connectionState !== "connected" && remoteStreamRef.current === null && (
-              <div className="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center z-10">
+              <div className="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center z-10 px-4">
                 <div className="text-center text-white">
-                  <div className="w-32 h-32 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <Camera className="w-16 h-16 text-gray-400" />
+                  <div className="w-24 h-24 sm:w-32 sm:h-32 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <Camera className="w-12 h-12 sm:w-16 sm:h-16 text-gray-400" />
                   </div>
                   <h3 className="text-xl font-semibold mb-2">
                     {selectedContact?.name || "Unknown"}
@@ -1341,7 +1341,7 @@ const VideoCallPage = () => {
             )}
 
             {/* Local PiP */}
-            <div className="absolute top-4 right-4 sm:top-6 sm:right-6 w-32 sm:w-48 h-24 sm:h-36 bg-gray-900 rounded-xl sm:rounded-2xl overflow-hidden shadow-2xl border-2 border-white/20">
+            <div className="absolute top-3 right-3 sm:top-6 sm:right-6 w-28 sm:w-48 h-20 sm:h-36 bg-gray-900 rounded-xl sm:rounded-2xl overflow-hidden shadow-2xl border-2 border-white/20">
               <video
                 ref={localVideoRef}
                 autoPlay
@@ -1373,7 +1373,7 @@ const VideoCallPage = () => {
             )}
 
             {/* Call info bar */}
-            <div className="absolute top-4 left-1/2 -translate-x-1/2 sm:top-6 bg-black/60 backdrop-blur-sm text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg sm:rounded-2xl text-center text-xs sm:text-base">
+            <div className="absolute top-16 sm:top-6 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-sm text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg sm:rounded-2xl text-center text-xs sm:text-base max-w-[70vw]">
               <h3 className="font-semibold">{selectedContact?.name || "Unknown"}</h3>
               <p className="text-xs sm:text-sm text-gray-300">
                 {currentCall
@@ -1385,7 +1385,7 @@ const VideoCallPage = () => {
             </div>
 
             {/* Controls */}
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 sm:bottom-8 flex items-center gap-2 sm:gap-4 bg-black/60 backdrop-blur-sm px-3 sm:px-8 py-3 sm:py-4 rounded-2xl sm:rounded-3xl flex-wrap justify-center">
+            <div className="absolute bottom-3 sm:bottom-8 left-1/2 -translate-x-1/2 flex max-w-[94vw] items-center gap-2 sm:gap-4 bg-black/60 backdrop-blur-sm px-3 sm:px-8 py-3 sm:py-4 rounded-2xl sm:rounded-3xl flex-wrap justify-center">
               <button
                 onClick={handleToggleMicrophone}
                 disabled={isTogglingMicrophone}
@@ -1396,41 +1396,41 @@ const VideoCallPage = () => {
                 }`}
               >
                 {mediaState.microphoneEnabled ? (
-                  <Mic className="w-6 h-6" />
+                  <Mic className="w-5 h-5 sm:w-6 sm:h-6" />
                 ) : (
-                  <MicOff className="w-6 h-6" />
+                  <MicOff className="w-5 h-5 sm:w-6 sm:h-6" />
                 )}
               </button>
 
               <button
                 onClick={handleToggleCamera}
                 disabled={isTogglingCamera}
-                className={`p-4 rounded-2xl transition-all hover:scale-105 shadow-lg disabled:opacity-50 ${
+                className={`p-2 sm:p-4 rounded-xl sm:rounded-2xl transition-all hover:scale-105 shadow-lg disabled:opacity-50 ${
                   mediaState.cameraEnabled
                     ? "bg-gray-700/80 text-white hover:bg-gray-600/80"
                     : "bg-red-500 text-white hover:bg-red-600"
                 }`}
               >
                 {mediaState.cameraEnabled ? (
-                  <Video className="w-6 h-6" />
+                  <Video className="w-5 h-5 sm:w-6 sm:h-6" />
                 ) : (
-                  <VideoOff className="w-6 h-6" />
+                  <VideoOff className="w-5 h-5 sm:w-6 sm:h-6" />
                 )}
               </button>
 
               <button
                 onClick={handleToggleScreenShare}
                 disabled={isTogglingScreenShare}
-                className={`p-4 rounded-2xl transition-all hover:scale-105 shadow-lg disabled:opacity-50 ${
+                className={`p-2 sm:p-4 rounded-xl sm:rounded-2xl transition-all hover:scale-105 shadow-lg disabled:opacity-50 ${
                   mediaState.screenSharing
                     ? "bg-blue-500 text-white hover:bg-blue-600"
                     : "bg-gray-700/80 text-white hover:bg-gray-600/80"
                 }`}
               >
                 {mediaState.screenSharing ? (
-                  <MonitorOff className="w-6 h-6" />
+                  <MonitorOff className="w-5 h-5 sm:w-6 sm:h-6" />
                 ) : (
-                  <Monitor className="w-6 h-6" />
+                  <Monitor className="w-5 h-5 sm:w-6 sm:h-6" />
                 )}
               </button>
 
@@ -1438,22 +1438,22 @@ const VideoCallPage = () => {
                 <button
                   onClick={handleEndCall}
                   disabled={isEnding}
-                  className="p-4 bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white rounded-2xl transition-all hover:scale-105 shadow-lg"
+                  className="p-2 sm:p-4 bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white rounded-xl sm:rounded-2xl transition-all hover:scale-105 shadow-lg"
                 >
-                  <PhoneOff className="w-6 h-6" />
+                  <PhoneOff className="w-5 h-5 sm:w-6 sm:h-6" />
                 </button>
               ) : (
                 <button
                   onClick={handleInitiateCall}
                   disabled={isInitiating || connectionState === "connecting"}
-                  className="p-4 bg-green-500 hover:bg-green-600 disabled:opacity-50 text-white rounded-2xl transition-all hover:scale-105 shadow-lg"
+                  className="p-2 sm:p-4 bg-green-500 hover:bg-green-600 disabled:opacity-50 text-white rounded-xl sm:rounded-2xl transition-all hover:scale-105 shadow-lg"
                 >
-                  <Phone className="w-6 h-6" />
+                  <Phone className="w-5 h-5 sm:w-6 sm:h-6" />
                 </button>
               )}
 
-              <button className="p-4 bg-gray-700/80 hover:bg-gray-600/80 text-white rounded-2xl transition-all hover:scale-105 shadow-lg">
-                <Settings className="w-6 h-6" />
+              <button className="p-2 sm:p-4 bg-gray-700/80 hover:bg-gray-600/80 text-white rounded-xl sm:rounded-2xl transition-all hover:scale-105 shadow-lg">
+                <Settings className="w-5 h-5 sm:w-6 sm:h-6" />
               </button>
             </div>
 
@@ -1463,7 +1463,7 @@ const VideoCallPage = () => {
                 if (currentCall) handleEndCall();
                 else { setSelectedContact(null); setShowContactList(true); }
               }}
-              className="md:hidden absolute top-6 left-6 p-3 bg-black/60 text-white rounded-xl hover:bg-black/80 transition-all"
+              className="md:hidden absolute top-3 left-3 p-3 bg-black/60 text-white rounded-xl hover:bg-black/80 transition-all"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
@@ -1473,7 +1473,7 @@ const VideoCallPage = () => {
 
       {/* ── Error toast ───────────────────────────────────────────────────────── */}
       {(error || storeError) && (
-        <div className="fixed top-4 right-4 bg-red-500 text-white px-6 py-4 rounded-2xl shadow-lg z-50 max-w-md">
+        <div className="fixed top-4 right-3 left-3 sm:left-auto sm:right-4 bg-red-500 text-white px-4 sm:px-6 py-4 rounded-2xl shadow-lg z-50 sm:max-w-md">
           <div className="flex items-start justify-between">
             <div className="flex-1">
               <h4 className="font-semibold mb-1">Error</h4>

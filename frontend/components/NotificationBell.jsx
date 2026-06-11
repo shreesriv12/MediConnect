@@ -98,7 +98,7 @@ const NotificationBell = ({ theme = "light" }) => {
       </motion.button>
 
       {open && (
-        <div className={`absolute right-0 mt-3 w-80 rounded-lg border shadow-xl ${surfaceClass}`}>
+        <div className={`fixed right-3 left-3 top-16 z-50 rounded-lg border shadow-xl sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-3 sm:w-80 ${surfaceClass}`}>
           <div className={`border-b p-4 ${theme === "dark" ? "border-gray-700" : "border-gray-200"}`}>
             <div className="flex items-start justify-between gap-3">
               <div>
@@ -108,7 +108,7 @@ const NotificationBell = ({ theme = "light" }) => {
                 </p>
               </div>
             </div>
-            <div className="mt-3 flex gap-2">
+            <div className="mt-3 flex flex-col sm:flex-row gap-2">
               <button
                 type="button"
                 onClick={fetchNotifications}

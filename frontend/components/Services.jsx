@@ -49,16 +49,16 @@ const Services = () => {
   return (
     <section 
       id="services" 
-      className={`py-16 ${theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'} transition-colors duration-300`}
+      className={`py-12 sm:py-16 ${theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'} transition-colors duration-300`}
     >
-      <div className="container mx-auto px-6">
-        <div className="text-center mb-12">
+      <div className="container mx-auto px-4 sm:px-6">
+        <div className="text-center mb-8 sm:mb-12">
           <motion.h2
             initial={{ opacity: 0, y: -20 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
             viewport={{ once: true }}
-            className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'} mb-4 transition-colors duration-300`}
+            className={`text-2xl sm:text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'} mb-4 transition-colors duration-300`}
           >
             Our Services
           </motion.h2>
@@ -67,7 +67,7 @@ const Services = () => {
             whileInView={{ opacity: 1 }}
             transition={{ duration: 0.5, delay: 0.2 }}
             viewport={{ once: true }}
-            className={`text-xl ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'} max-w-2xl mx-auto transition-colors duration-300`}
+            className={`text-base sm:text-xl ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'} max-w-2xl mx-auto transition-colors duration-300`}
           >
             We provide a comprehensive platform to connect patients with healthcare professionals.
           </motion.p>
@@ -78,7 +78,7 @@ const Services = () => {
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true }}
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8"
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 lg:gap-8"
         >
           {serviceItems.map((service, index) => (
             <motion.div
@@ -88,7 +88,7 @@ const Services = () => {
                 theme === 'dark' 
                   ? 'bg-gray-800 hover:bg-gray-700 text-white' 
                   : 'bg-white hover:shadow-lg text-gray-900'
-              } p-6 rounded-lg shadow-md transition-all duration-300`}
+              } p-4 sm:p-6 rounded-lg shadow-md transition-all duration-300`}
             >
               <div className="text-4xl mb-4">{service.icon}</div>
               <h3 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'} mb-2 transition-colors duration-300`}>

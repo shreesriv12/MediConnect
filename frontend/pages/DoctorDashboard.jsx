@@ -63,7 +63,7 @@ const DoctorDashboard = () => {
             initial={{ y: -50, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.5, duration: 0.8 }}
-            className={`text-4xl sm:text-5xl md:text-6xl font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}
+            className={`text-3xl sm:text-5xl md:text-6xl font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}
           >
             Welcome to
           </motion.h1>
@@ -73,7 +73,7 @@ const DoctorDashboard = () => {
             transition={{ delay: 1, duration: 0.8 }}
             className="flex items-center justify-center"
           >
-            <span className="text-5xl sm:text-6xl md:text-7xl font-bold bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent">
+            <span className="text-4xl sm:text-6xl md:text-7xl font-bold bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent">
               MediConnect
             </span>
           </motion.div>
@@ -151,7 +151,7 @@ const DoctorDashboard = () => {
       <DoctorDashboardNavbar />
       
       {/* Main Content */}
-      <div className="pt-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+      <div className="pt-20 px-3 sm:px-6 lg:px-8 max-w-7xl mx-auto">
         {/* Header Section */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -159,10 +159,10 @@ const DoctorDashboard = () => {
           transition={{ duration: 0.6 }}
           className="mb-8"
         >
-          <h1 className={`text-4xl font-bold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>
+          <h1 className={`text-2xl sm:text-3xl lg:text-4xl font-bold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>
             Doctor Dashboard
           </h1>
-          <p className={`text-lg ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
+          <p className={`text-sm sm:text-base lg:text-lg ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
             Welcome back! Here's what's happening with your practice today.
           </p>
         </motion.div>
@@ -174,13 +174,13 @@ const DoctorDashboard = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.1 }}
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-8"
         >
           {quickStats.map((stat, index) => (
             <motion.div
               key={index}
               whileHover={{ scale: 1.05 }}
-              className={`p-6 rounded-xl shadow-lg ${theme === 'dark' ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'}`}
+              className={`p-4 sm:p-6 rounded-xl shadow-lg ${theme === 'dark' ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'}`}
             >
               <div className="flex items-center justify-between">
                 <div>
@@ -202,7 +202,7 @@ const DoctorDashboard = () => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.6, delay: 0.2 }}
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8"
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6 mb-8"
         >
           {dashboardCards.map((card, index) => (
             <motion.div
@@ -214,7 +214,7 @@ const DoctorDashboard = () => {
               className="group"
             >
               <Link to={card.link}>
-                <div className={`p-6 rounded-xl shadow-lg transition-all duration-300 ${theme === 'dark' ? 'bg-gray-800 border border-gray-700 hover:border-gray-600' : 'bg-white border border-gray-200 hover:shadow-xl'}`}>
+                <div className={`p-4 sm:p-6 rounded-xl shadow-lg transition-all duration-300 ${theme === 'dark' ? 'bg-gray-800 border border-gray-700 hover:border-gray-600' : 'bg-white border border-gray-200 hover:shadow-xl'}`}>
                   <div className="flex items-start justify-between mb-4">
                     <div className="text-4xl">{card.icon}</div>
                     <div className={`w-3 h-3 rounded-full bg-gradient-to-r ${card.color} opacity-60 group-hover:opacity-100 transition-opacity`}></div>
@@ -242,7 +242,7 @@ const DoctorDashboard = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.4 }}
-          className={`rounded-xl shadow-lg p-6 mb-8 ${theme === 'dark' ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'}`}
+          className={`rounded-xl shadow-lg p-4 sm:p-6 mb-8 ${theme === 'dark' ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'}`}
         >
           <h2 className={`text-2xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>
             Recent Activity
@@ -254,7 +254,7 @@ const DoctorDashboard = () => {
               { action: "Video consultation completed", time: "5 hours ago", icon: "📹" },
               { action: "Profile updated", time: "1 day ago", icon: "👨‍⚕️" }
             ].map((activity, index) => (
-              <div key={index} className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+              <div key={index} className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
                 <div className="text-2xl">{activity.icon}</div>
                 <div className="flex-1">
                   <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>

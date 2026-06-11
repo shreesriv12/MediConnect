@@ -110,10 +110,10 @@ const ClientProfile = () => {
   
   return (
     <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-900 text-white' : 'bg-gray-100'} transition-colors duration-300`}>
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-3 sm:px-4 py-6 sm:py-8">
         <div className={`${theme === 'dark' ? 'bg-gray-800 shadow-lg' : 'bg-white shadow-md'} rounded-lg overflow-hidden max-w-4xl mx-auto transition-colors duration-300`}>
-          <div className={`${theme === 'dark' ? 'bg-gradient-to-r from-indigo-700 to-purple-800' : 'bg-gradient-to-r from-blue-500 to-indigo-600'} px-6 py-4 flex justify-between items-center`}>
-            <h2 className="text-2xl font-bold text-white">Client Profile</h2>
+          <div className={`${theme === 'dark' ? 'bg-gradient-to-r from-indigo-700 to-purple-800' : 'bg-gradient-to-r from-blue-500 to-indigo-600'} px-4 sm:px-6 py-4 flex justify-between items-center gap-4`}>
+            <h2 className="text-xl sm:text-2xl font-bold text-white">Client Profile</h2>
             <button 
               onClick={toggleTheme} 
               className={`flex items-center justify-center rounded-full p-2 ${theme === 'dark' ? 'bg-gray-700 text-yellow-300' : 'bg-blue-400 text-gray-800'}`}
@@ -131,7 +131,7 @@ const ClientProfile = () => {
             </button>
           </div>
           
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
             {isEditing ? (
               <form onSubmit={handleSubmit} className="space-y-6">
                 {/* Avatar Upload */}
@@ -154,7 +154,7 @@ const ClientProfile = () => {
                   </label>
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                   {/* Name */}
                   <div>
                     <label className={`block ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} font-semibold mb-2`}>Name</label>
@@ -251,7 +251,7 @@ const ClientProfile = () => {
                   </div>
                 </div>
                 
-                <div className="flex gap-4 justify-end mt-6">
+                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 sm:justify-end mt-6">
                   <button
                     type="button"
                     onClick={() => setIsEditing(false)}
@@ -270,10 +270,10 @@ const ClientProfile = () => {
               </form>
             ) : (
               <div>
-                <div className="flex flex-col md:flex-row">
+                <div className="flex flex-col md:flex-row text-center md:text-left">
                   {/* Avatar Display */}
-                  <div className="flex-shrink-0 mb-6 md:mb-0 md:mr-8">
-                    <div className={`w-40 h-40 rounded-full overflow-hidden ${theme === 'dark' ? 'ring-2 ring-indigo-500' : 'ring-2 ring-blue-300'}`}>
+                  <div className="flex-shrink-0 mb-6 md:mb-0 md:mr-8 flex justify-center">
+                    <div className={`w-32 h-32 sm:w-40 sm:h-40 rounded-full overflow-hidden ${theme === 'dark' ? 'ring-2 ring-indigo-500' : 'ring-2 ring-blue-300'}`}>
                       <img 
                         src={client.avatar || '/placeholder-avatar.png'} 
                         alt="Client Avatar" 
@@ -286,7 +286,7 @@ const ClientProfile = () => {
                   <div className="flex-grow">
                     <h3 className="text-2xl font-bold mb-2">{client.name}</h3>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-8">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-8 break-words">
                       <div>
                         <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Email</p>
                         <p className="font-medium">{client.email}</p>
@@ -307,10 +307,10 @@ const ClientProfile = () => {
                   </div>
                 </div>
                 
-                <div className="flex justify-end mt-8">
+                <div className="flex justify-stretch sm:justify-end mt-8">
                   <button
                     onClick={() => setIsEditing(true)}
-                    className={`${theme === 'dark' ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-blue-500 hover:bg-blue-600'} text-white py-2 px-6 rounded transition-colors duration-200`}
+                    className={`${theme === 'dark' ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-blue-500 hover:bg-blue-600'} w-full sm:w-auto text-white py-2 px-6 rounded transition-colors duration-200`}
                   >
                     Edit Profile
                   </button>

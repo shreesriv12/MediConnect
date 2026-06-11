@@ -533,25 +533,25 @@ const ChatPage = () => {
   }
 
   return (
-    <div className="flex flex-col sm:flex-row h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+    <div className="flex h-dvh min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 overflow-hidden">
       {/* Sidebar */}
-      <div className={`${showContactList ? 'w-full sm:w-80' : 'hidden sm:block sm:w-80'} bg-white/90 backdrop-blur-xl border-b sm:border-r border-slate-200/60 shadow-2xl overflow-hidden flex flex-col`}>
+      <div className={`${showContactList ? 'w-full md:w-80 lg:w-96' : 'hidden md:flex md:w-80 lg:w-96'} bg-white/90 backdrop-blur-xl border-r border-slate-200/60 shadow-2xl overflow-hidden flex flex-col`}>
         {/* Header with Current User Info */}
-        <div className="p-6 border-b border-slate-200/60 bg-gradient-to-r from-white/80 to-blue-50/50 backdrop-blur-sm">
+        <div className="p-4 sm:p-5 lg:p-6 border-b border-slate-200/60 bg-gradient-to-r from-white/80 to-blue-50/50 backdrop-blur-sm">
           {/* Current User Avatar and Info */}
           {currentUser && (
-            <div className="flex items-center mb-6 p-5 bg-gradient-to-r from-blue-50/90 to-indigo-50/90 rounded-2xl border border-blue-100/60 shadow-lg">
+            <div className="flex items-center mb-5 lg:mb-6 p-4 lg:p-5 bg-gradient-to-r from-blue-50/90 to-indigo-50/90 rounded-2xl border border-blue-100/60 shadow-lg">
               <div className="relative">
                 <img
                   src={currentUser.avatar || currentUser.profileImage || `https://ui-avatars.com/api/?name=${currentUser.name}&background=3b82f6&color=fff`}
                   alt={currentUser.name}
-                  className="w-16 h-16 rounded-2xl object-cover ring-3 ring-blue-200/50 shadow-xl"
+                  className="w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16 rounded-2xl object-cover ring-3 ring-blue-200/50 shadow-xl"
                 />
                 <div className={`absolute -bottom-1 -right-1 w-5 h-5 border-3 border-white rounded-full shadow-sm ${
                   isConnected ? 'bg-green-400' : 'bg-red-400'
                 }`}></div>
               </div>
-              <div className="ml-4 flex-1">
+              <div className="ml-3 sm:ml-4 flex-1 min-w-0">
                 <h2 className="text-lg font-bold text-slate-900">{currentUser.name}</h2>
                 <div className="text-sm text-slate-600 space-y-1 mt-1">
                   <p className="flex items-center">
@@ -576,7 +576,7 @@ const ChatPage = () => {
           )}
 
           <div className="flex items-center justify-between mb-6">
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+            <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
               {userType === 'Client' ? 'Find Doctors' : 'Your Patients'}
             </h1>
             <div className="flex space-x-2">
@@ -608,10 +608,10 @@ const ChatPage = () => {
 
         {/* Tabs */}
         <div className="flex border-b border-slate-200/60 bg-white/60 backdrop-blur-sm">
-          <button className="flex-1 px-6 py-4 text-sm font-semibold text-blue-600 border-b-3 border-blue-600 bg-blue-50/60">
+          <button className="flex-1 px-3 sm:px-6 py-3 sm:py-4 text-sm font-semibold text-blue-600 border-b-3 border-blue-600 bg-blue-50/60">
             {userType === 'Client' ? 'All Doctors' : 'All Patients'}
           </button>
-          <button className="flex-1 px-6 py-4 text-sm font-medium text-slate-500 hover:text-slate-700 hover:bg-slate-50/60 transition-all duration-300">
+          <button className="flex-1 px-3 sm:px-6 py-3 sm:py-4 text-sm font-medium text-slate-500 hover:text-slate-700 hover:bg-slate-50/60 transition-all duration-300">
             Recent Chats ({filteredChats.length})
           </button>
         </div>
@@ -722,11 +722,11 @@ const ChatPage = () => {
       </div>
 
       {/* Chat Area */}
-      <div className={`${showContactList ? 'hidden md:flex' : 'flex'} flex-1 flex-col bg-gradient-to-b from-white/40 to-slate-50/40 backdrop-blur-sm`}>
+      <div className={`${showContactList ? 'hidden md:flex' : 'flex'} min-w-0 flex-1 flex-col bg-gradient-to-b from-white/40 to-slate-50/40 backdrop-blur-sm`}>
         {selectedChat ? (
           <>
             {/* Chat Header */}
-            <div className="bg-white/90 backdrop-blur-xl border-b border-slate-200/60 px-6 py-4 shadow-lg">
+            <div className="bg-white/90 backdrop-blur-xl border-b border-slate-200/60 px-3 sm:px-5 lg:px-6 py-3 sm:py-4 shadow-lg">
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
                   <button
@@ -734,7 +734,7 @@ const ChatPage = () => {
                       setShowContactList(true);
                       clearCurrentChat();
                     }}
-                    className="mr-5 p-2.5 hover:bg-blue-50/80 rounded-xl md:hidden transition-all duration-300 hover:shadow-md"
+                    className="mr-3 sm:mr-5 p-2.5 hover:bg-blue-50/80 rounded-xl md:hidden transition-all duration-300 hover:shadow-md"
                   >
                     <ArrowLeft className="w-5 h-5" />
                   </button>
@@ -746,9 +746,9 @@ const ChatPage = () => {
                     />
                     <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-400 border-2 border-white rounded-full"></div>
                   </div>
-                  <div className="ml-4">
-                    <h3 className="text-lg font-bold text-slate-900">{selectedChat.name}</h3>
-                    <div className="text-sm text-slate-600 font-medium space-y-1">
+                  <div className="ml-3 sm:ml-4 min-w-0">
+                    <h3 className="truncate text-base sm:text-lg font-bold text-slate-900">{selectedChat.name}</h3>
+                    <div className="text-xs sm:text-sm text-slate-600 font-medium space-y-1">
                       <p>{selectedChat.age} years • {selectedChat.gender}</p>
                       {selectedChat.phone && (
                         <p className="flex items-center">
@@ -785,7 +785,7 @@ const ChatPage = () => {
             </div>
 
             {/* Messages - Fixed ordering to show new messages at bottom */}
-            <div className="flex-1 overflow-y-auto px-6 py-8 space-y-8">
+            <div className="flex-1 overflow-y-auto px-3 sm:px-5 lg:px-6 py-4 sm:py-6 lg:py-8 space-y-5 sm:space-y-8">
               {[...messages]
                 .sort((a, b) => {
                   const dateA = new Date(a.createdAt);
@@ -811,7 +811,7 @@ const ChatPage = () => {
                       key={message._id}
                       className={`w-full flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}
                     >
-                      <div className={`flex items-start max-w-2xl w-full ${
+                      <div className={`flex items-start max-w-2xl w-full min-w-0 ${
                         isOwnMessage 
                           ? 'flex-row-reverse space-x-reverse space-x-4' 
                           : 'flex-row space-x-4'
@@ -827,7 +827,7 @@ const ChatPage = () => {
                                 : (selectedChat?.avatar || selectedChat?.profileImage || `https://ui-avatars.com/api/?name=${selectedChat?.name}&background=10b981&color=fff`)
                             }
                             alt={isAiMessage ? 'MediConnect AI' : isOwnMessage ? currentUser?.name : selectedChat?.name}
-                            className="w-12 h-12 rounded-2xl object-cover ring-3 ring-white shadow-xl"
+                            className="w-9 h-9 sm:w-12 sm:h-12 rounded-2xl object-cover ring-3 ring-white shadow-xl"
                           />
                         </div>
                         {/* Message Content */}
@@ -848,7 +848,7 @@ const ChatPage = () => {
                             onTouchStart={() => startLongPressReply(message)}
                             onTouchEnd={clearLongPressTimer}
                             onTouchMove={clearLongPressTimer}
-                            className={`group relative inline-block max-w-lg p-4 rounded-2xl shadow-lg ${
+                            className={`group relative inline-block max-w-[min(100%,34rem)] break-words p-3 sm:p-4 rounded-2xl shadow-lg ${
                               isAiMessage
                                 ? 'bg-emerald-50 text-slate-900 border border-emerald-200'
                                 : isOwnMessage
@@ -1066,7 +1066,7 @@ const ChatPage = () => {
 
             {/* Message Input */}
             <div
-              className={`bg-white/90 backdrop-blur-xl border-t border-slate-200/60 p-6 shadow-lg transition-all ${
+              className={`bg-white/90 backdrop-blur-xl border-t border-slate-200/60 p-3 sm:p-5 lg:p-6 shadow-lg transition-all ${
                 isDragActive ? 'ring-4 ring-blue-300/50 bg-blue-50/80' : ''
               }`}
               onDragOver={(e) => {
@@ -1101,7 +1101,7 @@ const ChatPage = () => {
               )}
 
               {userType === 'Client' && (
-                <form onSubmit={handleAskDocumentQuestion} className="mb-4 flex items-center gap-3">
+                <form onSubmit={handleAskDocumentQuestion} className="mb-4 flex flex-col sm:flex-row sm:items-center gap-3">
                   <div className="relative flex-1">
                     <Bot className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-emerald-600" />
                     <input
@@ -1170,7 +1170,7 @@ const ChatPage = () => {
                 </div>
               )}
 
-              <form onSubmit={handleSendMessage} className="flex items-end space-x-4">
+              <form onSubmit={handleSendMessage} className="flex items-end gap-2 sm:gap-4">
                 {/* File Input */}
                 <input
                   ref={fileInputRef}
@@ -1184,13 +1184,13 @@ const ChatPage = () => {
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={isLoading}
-                  className="p-3 hover:bg-blue-50/80 rounded-2xl transition-all duration-300 hover:scale-105 hover:shadow-md"
+                  className="p-3 hover:bg-blue-50/80 rounded-2xl transition-all duration-300 hover:scale-105 hover:shadow-md flex-shrink-0"
                   title="Attach file"
                 >
                   <Paperclip className="w-5 h-5 text-slate-600" />
                 </button>
 
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                   <textarea
                     value={newMessage}
                     onChange={handleInputChange}
@@ -1199,7 +1199,7 @@ const ChatPage = () => {
                         ? `Ask about ${getReplyTitle(replyingTo)}...`
                         : 'Type your message...'
                     }
-                    className="w-full p-4 bg-slate-50/80 border border-slate-200/60 rounded-2xl focus:outline-none focus:ring-3 focus:ring-blue-500/30 focus:border-blue-500 transition-all duration-300 resize-none text-slate-700 placeholder-slate-500 shadow-sm"
+                    className="w-full p-3 sm:p-4 bg-slate-50/80 border border-slate-200/60 rounded-2xl focus:outline-none focus:ring-3 focus:ring-blue-500/30 focus:border-blue-500 transition-all duration-300 resize-none text-slate-700 placeholder-slate-500 shadow-sm"
                     rows={newMessage.split('\n').length || 1}
                     style={{ maxHeight: '120px' }}
                     onKeyDown={(e) => {
@@ -1214,7 +1214,7 @@ const ChatPage = () => {
                 <button
                   type="submit"
                   disabled={isLoading || (!newMessage.trim() && !selectedFile)}
-                  className="p-4 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-2xl transition-all duration-300 hover:scale-105 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                  className="p-3 sm:p-4 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-2xl transition-all duration-300 hover:scale-105 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex-shrink-0"
                 >
                   <Send className="w-5 h-5" />
                 </button>
@@ -1232,7 +1232,7 @@ const ChatPage = () => {
         ) : (
           /* No Chat Selected */
           <div className="flex-1 flex items-center justify-center bg-gradient-to-br from-slate-50/40 to-blue-50/40">
-            <div className="text-center bg-white/80 backdrop-blur-lg p-12 rounded-3xl shadow-2xl border border-white/20 max-w-md">
+            <div className="text-center bg-white/80 backdrop-blur-lg p-6 sm:p-10 lg:p-12 rounded-3xl shadow-2xl border border-white/20 max-w-md mx-4">
               <div className="w-24 h-24 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-lg">
                 <MessageCircle className="w-12 h-12 text-blue-600" />
               </div>
