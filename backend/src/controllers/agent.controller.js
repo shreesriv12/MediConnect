@@ -255,9 +255,32 @@ const toAgentProviderError = (error) => {
   return new ApiError(statusCode, `Agent provider error: ${providerMessage}`);
 };
 
+const parsePromptIntentLocally = (prompt) => {
+  const extractedDate = extractDateFromText(prompt);
+  const intentDetected = inferIntentFromText(prompt);
+  const availabilityHint = /\b(available|availability|slot|open|schedule|date|on|next)\b/i.test(prompt);
+  const bookingHint = /\b(book|schedule|appointment)\b/i.test(prompt);
+  const doctorName = extractDoctorNameFromText(prompt);
+  const symptoms = findSpecializations(prompt);
+
+  return {
+    intent: bookingHint
+      ? "book_appointment"
+      : extractedDate && availabilityHint
+        ? "check_availability"
+        : intentDetected,
+    searchQuery: normalizeSearchQuery(doctorName ? doctorName : prompt, prompt),
+    symptoms,
+    doctorName,
+    date: extractedDate,
+    timePreference: "",
+  };
+};
+
 const parsePromptIntent = async (prompt) => {
   if (!agentClient) {
-    throw new ApiError(500, "Agent LLM is not configured. Set AGENT_LLM_API_KEY, OPENROUTER_API_KEY, or GROQ_API_KEY.");
+    console.warn("[Agent] LLM is not configured; using local prompt parser.");
+    return parsePromptIntentLocally(prompt);
   }
 
   const currentDate = getLocalDateParts();
@@ -283,7 +306,12 @@ Respond with JSON only, nothing else.`;
       ],
     });
   } catch (error) {
-    throw toAgentProviderError(error);
+    const providerError = toAgentProviderError(error);
+    console.warn("[Agent] Provider request failed; using local prompt parser.", {
+      statusCode: providerError.statusCode,
+      message: providerError.message,
+    });
+    return parsePromptIntentLocally(prompt);
   }
 
   const raw = completion.choices?.[0]?.message?.content;
